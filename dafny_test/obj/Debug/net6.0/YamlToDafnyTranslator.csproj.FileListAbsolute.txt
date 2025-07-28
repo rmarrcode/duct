@@ -1,0 +1,5 @@
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net6.0/YamlToDafnyTranslator.csproj.AssemblyReference.cache
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net6.0/YamlToDafnyTranslator.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net6.0/YamlToDafnyTranslator.AssemblyInfoInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net6.0/YamlToDafnyTranslator.AssemblyInfo.cs
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net6.0/YamlToDafnyTranslator.csproj.CoreCompileInputs.cache

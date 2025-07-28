@@ -1,0 +1,35 @@
+tables:
+  - name: users
+    columns:
+      - name: id
+        type: int
+      - name: username
+        type: string
+      - name: email
+        type: string
+      - name: created_at
+        type: string
+  - name: posts
+    columns:
+      - name: id
+        type: int
+      - name: user_id
+        type: int
+      - name: title
+        type: string
+      - name: content
+        type: string
+      - name: published
+        type: bool
+  - name: comments
+    columns:
+      - name: id
+        type: int
+      - name: post_id
+        type: int
+      - name: user_id
+        type: int
+      - name: content
+        type: string
+      - name: created_at
+        type: string 

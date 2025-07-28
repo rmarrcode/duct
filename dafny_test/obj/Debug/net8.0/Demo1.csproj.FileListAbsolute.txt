@@ -1,0 +1,15 @@
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.AssemblyInfoInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.AssemblyInfo.cs
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.csproj.CoreCompileInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.sourcelink.json
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/Demo1
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.dll
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/refint/Demo1.dll
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.pdb
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/Demo1.deps.json
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/Demo1.genruntimeconfig.cache
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/Demo1.runtimeconfig.json
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/Demo1.dll
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/obj/Debug/net8.0/ref/Demo1.dll
+/Users/ryanmarr/Documents/duct_env/duct/dafny_test/Demo1.pdb
