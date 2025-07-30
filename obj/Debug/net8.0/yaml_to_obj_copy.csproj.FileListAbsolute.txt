@@ -1,0 +1,15 @@
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.AssemblyInfoInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.AssemblyInfo.cs
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.csproj.CoreCompileInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.sourcelink.json
+/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.dll
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/refint/yaml_to_obj_copy.dll
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.pdb
+/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.deps.json
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj_copy.genruntimeconfig.cache
+/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.runtimeconfig.json
+/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.dll
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/ref/yaml_to_obj_copy.dll
+/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.pdb

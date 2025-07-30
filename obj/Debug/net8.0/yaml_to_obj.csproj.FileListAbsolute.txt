@@ -1,0 +1,5 @@
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj.AssemblyInfoInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj.AssemblyInfo.cs
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj.csproj.CoreCompileInputs.cache
+/Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/yaml_to_obj.sourcelink.json
