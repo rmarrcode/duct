@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("yaml_to_obj_copy")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be7ced38aa059e474b569fd1b038c4e0ef3566af")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+31a286df3abd568e6a09cd434e64ced93c82268b")]
 [assembly: System.Reflection.AssemblyProductAttribute("yaml_to_obj_copy")]
 [assembly: System.Reflection.AssemblyTitleAttribute("yaml_to_obj_copy")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

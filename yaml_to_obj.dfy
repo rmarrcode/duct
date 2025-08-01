@@ -47,6 +47,62 @@ module YamlToDafnyTranslator {
 
   method {:extern "ExternalFunctions", "WriteLine"} WriteLine(s: string)
 
+  // ------------------------------------------------------------
+  // Simple in-memory "API" over a sequence of tables
+  // ------------------------------------------------------------
+
+  // Predicate: does a table with the given name exist?
+  function TableExists(db: seq<Table>, name: string): bool {
+    exists t :: t in db && t.name == name
+  }
+
+  // Create (add) a new table to the database.
+  // Requires: no table of the same name already exists.
+  // Ensures:  the returned database contains all previous tables plus the new one.
+  function AddTable(db: seq<Table>, newT: Table): seq<Table>
+    requires !TableExists(db, newT.name)
+    ensures TableExists(result, newT.name)
+    ensures |result| == |db| + 1
+    ensures forall t :: t in db ==> t in result
+  {
+    db + [newT]
+  }
+
+  // Read (retrieve) all tables whose name matches the query.
+  // If no such table exists the returned sequence is empty.
+  function GetTables(db: seq<Table>, name: string): seq<Table>
+    ensures (|result| == 0) ==> !TableExists(db, name)
+    ensures forall t :: t in result ==> t.name == name
+  {
+    seq t | t in db && t.name == name :: t
+  }
+
+  // Update: replace an existing table (matched by name) with a modified one.
+  // Requires: a table with the same name as `updated` must already exist.
+  // Ensures:  length of database is unchanged and the returned database
+  //           contains the updated table exactly once.
+  function UpdateTable(db: seq<Table>, updated: Table): seq<Table>
+    requires TableExists(db, updated.name)
+    ensures |result| == |db|
+    ensures TableExists(result, updated.name)
+    ensures forall t :: t in result ==> t.name == updated.name ==> t == updated
+  {
+    seq t | t in db :: if t.name == updated.name then updated else t
+  }
+
+  // Delete: remove the table with the given name.
+  // Requires: such a table exists.
+  // Ensures:  the returned database no longer contains that table and is
+  //           one element shorter than the input.
+  function DeleteTable(db: seq<Table>, name: string): seq<Table>
+    requires TableExists(db, name)
+    ensures !TableExists(result, name)
+    ensures |result| == |db| - 1
+    ensures forall t :: t in result ==> t in db && t.name != name
+  {
+    seq t | t in db && t.name != name :: t
+  }
+
   // Main entry point - for each file given on the command-line, read the YAML,
   // parse it, and emit Dafny classes.
   method Main(args: seq<string>)
