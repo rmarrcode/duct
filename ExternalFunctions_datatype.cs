@@ -25,7 +25,7 @@ public class ExternalFunctions {
         }
     }
     
-    public static Dafny.ISequence<YamlToDafnyTranslator._ITable> ParseYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
+    public static Dafny.ISequence<YamlToDatatypeTranslator._ITable> ParseYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
         try {
             Console.WriteLine($"ParseYaml called with {lines.Count} lines");
             
@@ -37,9 +37,9 @@ public class ExternalFunctions {
                 Console.WriteLine($"Line {i}: '{line}'");
             }
             
-            var tables = new List<YamlToDafnyTranslator._ITable>();
-            var currentTable = (YamlToDafnyTranslator._ITable)null;
-            var currentColumns = new List<YamlToDafnyTranslator._IColumn>();
+            var tables = new List<YamlToDatatypeTranslator._ITable>();
+            var currentTable = (YamlToDatatypeTranslator._ITable)null;
+            var currentColumns = new List<YamlToDatatypeTranslator._IColumn>();
             
             for (int i = 0; i < stringLines.Count; i++) {
                 string line = stringLines[i].TrimEnd();
@@ -57,18 +57,18 @@ public class ExternalFunctions {
                     // Save previous table if exists
                     if (currentTable != null) {
                         // Create new table with current columns
-                        currentTable = YamlToDafnyTranslator.Table.create(
+                        currentTable = YamlToDatatypeTranslator.Table.create(
                             currentTable.dtor_name,
-                            Dafny.Sequence<YamlToDafnyTranslator._IColumn>.FromElements(currentColumns.ToArray())
+                            Dafny.Sequence<YamlToDatatypeTranslator._IColumn>.FromElements(currentColumns.ToArray())
                         );
                         tables.Add(currentTable);
                     }
                     
                     // Start new table
                     string tableName = line.TrimStart().Substring("- name:".Length).Trim();
-                    currentTable = YamlToDafnyTranslator.Table.create(
+                    currentTable = YamlToDatatypeTranslator.Table.create(
                         Dafny.Sequence<Dafny.Rune>.UnicodeFromString(tableName),
-                        Dafny.Sequence<YamlToDafnyTranslator._IColumn>.Empty
+                        Dafny.Sequence<YamlToDatatypeTranslator._IColumn>.Empty
                     );
                     currentColumns.Clear();
                 }
@@ -89,7 +89,7 @@ public class ExternalFunctions {
                         if (nextLine.TrimStart().StartsWith("type:")) {
                             string columnType = nextLine.TrimStart().Substring("type:".Length).Trim();
                             Console.WriteLine($"Found column type: {columnType} for {columnName}");
-                            currentColumns.Add(YamlToDafnyTranslator.Column.create(
+                            currentColumns.Add(YamlToDatatypeTranslator.Column.create(
                                 Dafny.Sequence<Dafny.Rune>.UnicodeFromString(columnName),
                                 Dafny.Sequence<Dafny.Rune>.UnicodeFromString(columnType)
                             ));
@@ -101,93 +101,19 @@ public class ExternalFunctions {
             
             // Add the last table if exists
             if (currentTable != null) {
-                currentTable = YamlToDafnyTranslator.Table.create(
+                currentTable = YamlToDatatypeTranslator.Table.create(
                     currentTable.dtor_name,
-                    Dafny.Sequence<YamlToDafnyTranslator._IColumn>.FromElements(currentColumns.ToArray())
+                    Dafny.Sequence<YamlToDatatypeTranslator._IColumn>.FromElements(currentColumns.ToArray())
                 );
                 tables.Add(currentTable);
             }
             
             Console.WriteLine($"Parsed {tables.Count} tables");
-            return Dafny.Sequence<YamlToDafnyTranslator._ITable>.FromElements(tables.ToArray());
+            return Dafny.Sequence<YamlToDatatypeTranslator._ITable>.FromElements(tables.ToArray());
         }
         catch (Exception ex) {
             Console.Error.WriteLine($"Error parsing YAML: {ex.Message}");
-            return Dafny.Sequence<YamlToDafnyTranslator._ITable>.FromElements();
-        }
-    }
-    
-    public static Dafny.ISequence<YamlToDafnyTranslator._IRow> ParseDataYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
-        try {
-            Console.WriteLine($"ParseDataYaml called with {lines.Count} lines");
-            
-            // Convert Dafny sequences to C# strings
-            var stringLines = new List<string>();
-            for (int i = 0; i < lines.Count; i++) {
-                string line = string.Join("", lines.CloneAsArray()[i].Select(r => r.ToString()));
-                stringLines.Add(line);
-                Console.WriteLine($"Data Line {i}: '{line}'");
-            }
-            
-            var rows = new List<YamlToDafnyTranslator._IRow>();
-            var currentTableName = "";
-            var currentValues = new List<string>();
-            
-            for (int i = 0; i < stringLines.Count; i++) {
-                string line = stringLines[i].TrimEnd();
-                
-                // Skip empty lines
-                if (string.IsNullOrWhiteSpace(line)) {
-                    continue;
-                }
-                
-                Console.WriteLine($"Processing data line: '{line}'");
-                
-                // Check if this is a table name (e.g., "users:")
-                if (line.TrimStart().EndsWith(":") && !line.TrimStart().StartsWith("-")) {
-                    currentTableName = line.TrimStart().TrimEnd(':');
-                    Console.WriteLine($"Found table: {currentTableName}");
-                    continue;
-                }
-                
-                // Check if this is a data row (starts with "- ")
-                if (line.TrimStart().StartsWith("- ")) {
-                    Console.WriteLine($"Found data row: {line}");
-                    
-                    // Parse the values from the row
-                    string rowData = line.TrimStart().Substring("- ".Length);
-                    var values = new List<string>();
-                    
-                    // Simple parsing: split by commas or spaces
-                    // This is a basic implementation - could be enhanced for more complex data
-                    string[] parts = rowData.Split(',');
-                    foreach (string part in parts) {
-                        string trimmed = part.Trim();
-                        if (!string.IsNullOrEmpty(trimmed)) {
-                            values.Add(trimmed);
-                        }
-                    }
-                    
-                    if (values.Count > 0) {
-                        var rowValues = new List<Dafny.ISequence<Dafny.Rune>>();
-                        foreach (string value in values) {
-                            rowValues.Add(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(value));
-                        }
-                        
-                        rows.Add(YamlToDafnyTranslator.Row.create(
-                            Dafny.Sequence<Dafny.Rune>.UnicodeFromString(currentTableName),
-                            Dafny.Sequence<Dafny.ISequence<Dafny.Rune>>.FromElements(rowValues.ToArray())
-                        ));
-                    }
-                }
-            }
-            
-            Console.WriteLine($"Parsed {rows.Count} data rows");
-            return Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements(rows.ToArray());
-        }
-        catch (Exception ex) {
-            Console.Error.WriteLine($"Error parsing data YAML: {ex.Message}");
-            return Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements();
+            return Dafny.Sequence<YamlToDatatypeTranslator._ITable>.FromElements();
         }
     }
     
@@ -200,4 +126,4 @@ public class ExternalFunctions {
             Console.Error.WriteLine($"Error writing line: {ex.Message}");
         }
     }
-}
+} 

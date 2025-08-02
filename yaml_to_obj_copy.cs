@@ -17,15 +17,119 @@ module YamlToDafnyTranslator {
   method {:extern ""ExternalFunctions"", ""ReadAllLines""} ReadAllLines(path: string) returns (lines: seq<string>)
     decreases path
 
+  method {:extern ""ExternalFunctions"", ""ParseYaml""} ParseYaml(lines: seq<string>) returns (tables: seq<Table>)
+    decreases lines
+
+  method {:extern ""ExternalFunctions"", ""ParseDataYaml""} ParseDataYaml(lines: seq<string>) returns (data: seq<Row>)
+    decreases lines
+
+  method {:extern ""ExternalFunctions"", ""WriteLine""} WriteLine(s: string)
+    decreases s
+
+  function FieldLine(c: Column): string
+    decreases c
+  {
+    ""  var "" + c.name + "": "" + c.typ + "";\n""
+  }
+
+  function FieldsAsString(cols: seq<Column>): string
+    decreases cols
+  {
+    if |cols| == 0 then
+      """"
+    else
+      FieldLine(cols[0]) + FieldsAsString(cols[1..])
+  }
+
+  function ClassAsString(t: Table): string
+    decreases t
+  {
+    var header: seq<char> := ""class "" + t.name + "" {\n"";
+    var footer: string := ""}\n"";
+    header + FieldsAsString(t.columns) + footer
+  }
+
+  function TableExists(db: seq<Table>, name: string): bool
+    decreases db, name
+  {
+    exists t: Table {:trigger t.name} {:trigger t in db} :: 
+      t in db &&
+      t.name == name
+  }
+
+  function AddTable(db: seq<Table>, newT: Table): seq<Table>
+    requires !TableExists(db, newT.name)
+    ensures TableExists(AddTable(db, newT), newT.name)
+    ensures |AddTable(db, newT)| == |db| + 1
+    ensures forall t: Table {:trigger t in AddTable(db, newT)} {:trigger t in db} :: t in db ==> t in AddTable(db, newT)
+    decreases db, newT
+  {
+    db + [newT]
+  }
+
+  function GetTable(db: seq<Table>, name: string): Table
+    requires TableExists(db, name)
+    decreases db, name
+  {
+    db[0]
+  }
+
+  function AddRow(data: seq<Row>, newRow: Row): seq<Row>
+    decreases data, newRow
+  {
+    data + [newRow]
+  }
+
+  function GetRowsByTable(data: seq<Row>, tableName: string): seq<Row>
+    decreases data, tableName
+  {
+    []
+  }
+
   method Main(args: seq<string>)
     decreases args
   {
     if |args| < 2 {
+      WriteLine(""Usage: yaml_to_dafny <schema.yml> [data.yml]"");
       return;
     }
-    var path := args[1];
-    var content := ReadAllLines(path);
+    var schemaPath := args[1];
+    WriteLine(""Reading schema file: "" + schemaPath);
+    var schemaContent := ReadAllLines(schemaPath);
+    WriteLine(""Schema file read, parsing YAML..."");
+    var tables := ParseYaml(schemaContent);
+    WriteLine(""Schema parsed, generating classes..."");
+    var j := 0;
+    while j < |tables|
+      decreases |tables| - j
+    {
+      WriteLine(ClassAsString(tables[j]));
+      j := j + 1;
+    }
+    if |args| >= 3 {
+      var dataPath := args[2];
+      WriteLine(""Reading data file: "" + dataPath);
+      var dataContent := ReadAllLines(dataPath);
+      WriteLine(""Data file read, parsing YAML..."");
+      var data := ParseDataYaml(dataContent);
+      WriteLine(""Data parsed, processing..."");
+      var k := 0;
+      while k < |data|
+        decreases |data| - k
+      {
+        var row := data[k];
+        WriteLine(""Inserting row into "" + row.tableName + "" with values"");
+        k := k + 1;
+      }
+    }
+    WriteLine(""Done!"");
   }
+
+  datatype Column = Column(name: string, typ: string)
+
+  datatype Table = Table(name: string, columns: seq<Column>)
+
+  datatype Row = Row(tableName: string, values: seq<string>)
 }
 ")]
 
@@ -5697,22 +5801,298 @@ internal static class FuncExtensions {
   public static Func<UResult> DowncastClone<TResult, UResult>(this Func<TResult> F, Func<TResult, UResult> ResConv) {
     return () => ResConv(F());
   }
+  public static Func<U1, U2, UResult> DowncastClone<T1, T2, TResult, U1, U2, UResult>(this Func<T1, T2, TResult> F, Func<U1, T1> ArgConv1, Func<U2, T2> ArgConv2, Func<TResult, UResult> ResConv) {
+    return (arg1, arg2) => ResConv(F(ArgConv1(arg1), ArgConv2(arg2)));
+  }
 }
 // end of class FuncExtensions
 namespace YamlToDafnyTranslator {
 
   public partial class __default {
+    public static Dafny.ISequence<Dafny.Rune> FieldLine(YamlToDafnyTranslator._IColumn c) {
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("  var "), (c).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(": ")), (c).dtor_typ), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(";\n"));
+    }
+    public static Dafny.ISequence<Dafny.Rune> FieldsAsString(Dafny.ISequence<YamlToDafnyTranslator._IColumn> cols) {
+      Dafny.ISequence<Dafny.Rune> _0___accumulator = Dafny.Sequence<Dafny.Rune>.FromElements();
+    TAIL_CALL_START: ;
+      if ((new BigInteger((cols).Count)).Sign == 0) {
+        return Dafny.Sequence<Dafny.Rune>.Concat(_0___accumulator, Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""));
+      } else {
+        _0___accumulator = Dafny.Sequence<Dafny.Rune>.Concat(_0___accumulator, YamlToDafnyTranslator.__default.FieldLine((cols).Select(BigInteger.Zero)));
+        Dafny.ISequence<YamlToDafnyTranslator._IColumn> _in0 = (cols).Drop(BigInteger.One);
+        cols = _in0;
+        goto TAIL_CALL_START;
+      }
+    }
+    public static Dafny.ISequence<Dafny.Rune> ClassAsString(YamlToDafnyTranslator._ITable t) {
+      Dafny.ISequence<Dafny.Rune> _0_header = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("class "), (t).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" {\n"));
+      Dafny.ISequence<Dafny.Rune> _1_footer = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("}\n");
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_0_header, YamlToDafnyTranslator.__default.FieldsAsString((t).dtor_columns)), _1_footer);
+    }
+    public static bool TableExists(Dafny.ISequence<YamlToDafnyTranslator._ITable> db, Dafny.ISequence<Dafny.Rune> name)
+    {
+      return Dafny.Helpers.Id<Func<Dafny.ISequence<YamlToDafnyTranslator._ITable>, Dafny.ISequence<Dafny.Rune>, bool>>((_0_db, _1_name) => Dafny.Helpers.Quantifier<YamlToDafnyTranslator._ITable>((_0_db).UniqueElements, false, (((_exists_var_0) => {
+        YamlToDafnyTranslator._ITable _2_t = (YamlToDafnyTranslator._ITable)_exists_var_0;
+        return ((_0_db).Contains(_2_t)) && (((_2_t).dtor_name).Equals(_1_name));
+      }))))(db, name);
+    }
+    public static Dafny.ISequence<YamlToDafnyTranslator._ITable> AddTable(Dafny.ISequence<YamlToDafnyTranslator._ITable> db, YamlToDafnyTranslator._ITable newT)
+    {
+      return Dafny.Sequence<YamlToDafnyTranslator._ITable>.Concat(db, Dafny.Sequence<YamlToDafnyTranslator._ITable>.FromElements(newT));
+    }
+    public static YamlToDafnyTranslator._ITable GetTable(Dafny.ISequence<YamlToDafnyTranslator._ITable> db, Dafny.ISequence<Dafny.Rune> name)
+    {
+      return (db).Select(BigInteger.Zero);
+    }
+    public static Dafny.ISequence<YamlToDafnyTranslator._IRow> AddRow(Dafny.ISequence<YamlToDafnyTranslator._IRow> data, YamlToDafnyTranslator._IRow newRow)
+    {
+      return Dafny.Sequence<YamlToDafnyTranslator._IRow>.Concat(data, Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements(newRow));
+    }
+    public static Dafny.ISequence<YamlToDafnyTranslator._IRow> GetRowsByTable(Dafny.ISequence<YamlToDafnyTranslator._IRow> data, Dafny.ISequence<Dafny.Rune> tableName)
+    {
+      return Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements();
+    }
     public static void _Main(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> args)
     {
       if ((new BigInteger((args).Count)) < (new BigInteger(2))) {
+        ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Usage: yaml_to_dafny <schema.yml> [data.yml]"));
         return ;
       }
-      Dafny.ISequence<Dafny.Rune> _0_path;
-      _0_path = (args).Select(BigInteger.One);
-      Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _1_content;
+      Dafny.ISequence<Dafny.Rune> _0_schemaPath;
+      _0_schemaPath = (args).Select(BigInteger.One);
+      ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Reading schema file: "), _0_schemaPath));
+      Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _1_schemaContent;
       Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _out0;
-      _out0 = ExternalFunctions.ReadAllLines(_0_path);
-      _1_content = _out0;
+      _out0 = ExternalFunctions.ReadAllLines(_0_schemaPath);
+      _1_schemaContent = _out0;
+      ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Schema file read, parsing YAML..."));
+      Dafny.ISequence<YamlToDafnyTranslator._ITable> _2_tables;
+      Dafny.ISequence<YamlToDafnyTranslator._ITable> _out1;
+      _out1 = ExternalFunctions.ParseYaml(_1_schemaContent);
+      _2_tables = _out1;
+      ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Schema parsed, generating classes..."));
+      BigInteger _3_j;
+      _3_j = BigInteger.Zero;
+      while ((_3_j) < (new BigInteger((_2_tables).Count))) {
+        ExternalFunctions.WriteLine(YamlToDafnyTranslator.__default.ClassAsString((_2_tables).Select(_3_j)));
+        _3_j = (_3_j) + (BigInteger.One);
+      }
+      if ((new BigInteger((args).Count)) >= (new BigInteger(3))) {
+        Dafny.ISequence<Dafny.Rune> _4_dataPath;
+        _4_dataPath = (args).Select(new BigInteger(2));
+        ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Reading data file: "), _4_dataPath));
+        Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _5_dataContent;
+        Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _out2;
+        _out2 = ExternalFunctions.ReadAllLines(_4_dataPath);
+        _5_dataContent = _out2;
+        ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Data file read, parsing YAML..."));
+        Dafny.ISequence<YamlToDafnyTranslator._IRow> _6_data;
+        Dafny.ISequence<YamlToDafnyTranslator._IRow> _out3;
+        _out3 = ExternalFunctions.ParseDataYaml(_5_dataContent);
+        _6_data = _out3;
+        ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Data parsed, processing..."));
+        BigInteger _7_k;
+        _7_k = BigInteger.Zero;
+        while ((_7_k) < (new BigInteger((_6_data).Count))) {
+          YamlToDafnyTranslator._IRow _8_row;
+          _8_row = (_6_data).Select(_7_k);
+          ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Inserting row into "), (_8_row).dtor_tableName), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" with values")));
+          _7_k = (_7_k) + (BigInteger.One);
+        }
+      }
+      ExternalFunctions.WriteLine(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Done!"));
+    }
+  }
+
+  public interface _IColumn {
+    bool is_Column { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_name { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_typ { get; }
+    _IColumn DowncastClone();
+  }
+  public class Column : _IColumn {
+    public readonly Dafny.ISequence<Dafny.Rune> _name;
+    public readonly Dafny.ISequence<Dafny.Rune> _typ;
+    public Column(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> typ) {
+      this._name = name;
+      this._typ = typ;
+    }
+    public _IColumn DowncastClone() {
+      if (this is _IColumn dt) { return dt; }
+      return new Column(_name, _typ);
+    }
+    public override bool Equals(object other) {
+      var oth = other as YamlToDafnyTranslator.Column;
+      return oth != null && object.Equals(this._name, oth._name) && object.Equals(this._typ, oth._typ);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._name));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._typ));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "YamlToDafnyTranslator.Column.Column";
+      s += "(";
+      s += this._name.ToVerbatimString(true);
+      s += ", ";
+      s += this._typ.ToVerbatimString(true);
+      s += ")";
+      return s;
+    }
+    private static readonly YamlToDafnyTranslator._IColumn theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty);
+    public static YamlToDafnyTranslator._IColumn Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<YamlToDafnyTranslator._IColumn> _TYPE = new Dafny.TypeDescriptor<YamlToDafnyTranslator._IColumn>(YamlToDafnyTranslator.Column.Default());
+    public static Dafny.TypeDescriptor<YamlToDafnyTranslator._IColumn> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IColumn create(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> typ) {
+      return new Column(name, typ);
+    }
+    public static _IColumn create_Column(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> typ) {
+      return create(name, typ);
+    }
+    public bool is_Column { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_name {
+      get {
+        return this._name;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_typ {
+      get {
+        return this._typ;
+      }
+    }
+  }
+
+  public interface _ITable {
+    bool is_Table { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_name { get; }
+    Dafny.ISequence<YamlToDafnyTranslator._IColumn> dtor_columns { get; }
+    _ITable DowncastClone();
+  }
+  public class Table : _ITable {
+    public readonly Dafny.ISequence<Dafny.Rune> _name;
+    public readonly Dafny.ISequence<YamlToDafnyTranslator._IColumn> _columns;
+    public Table(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<YamlToDafnyTranslator._IColumn> columns) {
+      this._name = name;
+      this._columns = columns;
+    }
+    public _ITable DowncastClone() {
+      if (this is _ITable dt) { return dt; }
+      return new Table(_name, _columns);
+    }
+    public override bool Equals(object other) {
+      var oth = other as YamlToDafnyTranslator.Table;
+      return oth != null && object.Equals(this._name, oth._name) && object.Equals(this._columns, oth._columns);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._name));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._columns));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "YamlToDafnyTranslator.Table.Table";
+      s += "(";
+      s += this._name.ToVerbatimString(true);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._columns);
+      s += ")";
+      return s;
+    }
+    private static readonly YamlToDafnyTranslator._ITable theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<YamlToDafnyTranslator._IColumn>.Empty);
+    public static YamlToDafnyTranslator._ITable Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<YamlToDafnyTranslator._ITable> _TYPE = new Dafny.TypeDescriptor<YamlToDafnyTranslator._ITable>(YamlToDafnyTranslator.Table.Default());
+    public static Dafny.TypeDescriptor<YamlToDafnyTranslator._ITable> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _ITable create(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<YamlToDafnyTranslator._IColumn> columns) {
+      return new Table(name, columns);
+    }
+    public static _ITable create_Table(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<YamlToDafnyTranslator._IColumn> columns) {
+      return create(name, columns);
+    }
+    public bool is_Table { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_name {
+      get {
+        return this._name;
+      }
+    }
+    public Dafny.ISequence<YamlToDafnyTranslator._IColumn> dtor_columns {
+      get {
+        return this._columns;
+      }
+    }
+  }
+
+  public interface _IRow {
+    bool is_Row { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_tableName { get; }
+    Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> dtor_values { get; }
+    _IRow DowncastClone();
+  }
+  public class Row : _IRow {
+    public readonly Dafny.ISequence<Dafny.Rune> _tableName;
+    public readonly Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> _values;
+    public Row(Dafny.ISequence<Dafny.Rune> tableName, Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> values) {
+      this._tableName = tableName;
+      this._values = values;
+    }
+    public _IRow DowncastClone() {
+      if (this is _IRow dt) { return dt; }
+      return new Row(_tableName, _values);
+    }
+    public override bool Equals(object other) {
+      var oth = other as YamlToDafnyTranslator.Row;
+      return oth != null && object.Equals(this._tableName, oth._tableName) && object.Equals(this._values, oth._values);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._tableName));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._values));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "YamlToDafnyTranslator.Row.Row";
+      s += "(";
+      s += this._tableName.ToVerbatimString(true);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._values);
+      s += ")";
+      return s;
+    }
+    private static readonly YamlToDafnyTranslator._IRow theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.ISequence<Dafny.Rune>>.Empty);
+    public static YamlToDafnyTranslator._IRow Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<YamlToDafnyTranslator._IRow> _TYPE = new Dafny.TypeDescriptor<YamlToDafnyTranslator._IRow>(YamlToDafnyTranslator.Row.Default());
+    public static Dafny.TypeDescriptor<YamlToDafnyTranslator._IRow> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IRow create(Dafny.ISequence<Dafny.Rune> tableName, Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> values) {
+      return new Row(tableName, values);
+    }
+    public static _IRow create_Row(Dafny.ISequence<Dafny.Rune> tableName, Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> values) {
+      return create(tableName, values);
+    }
+    public bool is_Row { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_tableName {
+      get {
+        return this._tableName;
+      }
+    }
+    public Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> dtor_values {
+      get {
+        return this._values;
+      }
     }
   }
 } // end of namespace YamlToDafnyTranslator
