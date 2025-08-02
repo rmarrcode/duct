@@ -1,65 +1,67 @@
-module YamlToDatatypeTranslator {
+module YamlToSchemaDatatypeTranslator {
   // Simple YAML reader that just reads lines from a file
 
   method {:extern "ExternalFunctions", "ReadAllLines"} ReadAllLines(path: string) returns (lines: seq<string>)
 
-  // YAML parsing is delegated to externally supplied code
-  method {:extern "ExternalFunctions", "ParseYaml"} ParseYaml(lines: seq<string>) returns (tables: seq<Table>)
+  // Schema YAML parsing is delegated to externally supplied code
+  method {:extern "ExternalFunctions", "ParseSchemaYaml"} ParseSchemaYaml(lines: seq<string>) returns (tables: seq<Table>)
 
   method {:extern "ExternalFunctions", "WriteLine"} WriteLine(s: string)
+
+  method {:extern "ExternalFunctions", "WriteToFile"} WriteToFile(filename: string, content: string)
 
   datatype Column = Column(name: string, typ: string)
   datatype Table  = Table(name: string, columns: seq<Column>)
 
-  // Helper - convert a list of columns into field declarations for datatypes
-  function DatatypeFieldLine(c: Column): string {
-    "    " + c.name + ": " + c.typ + ",\n"
-  }
-
-  function DatatypeFieldsAsString(cols: seq<Column>): string {
-    if cols.Length == 0 then "" else DatatypeFieldLine(cols[0]) + DatatypeFieldsAsString(cols[1..])
-  }
-
-  // Generate a Dafny datatype declaration for a single table.
-  function DatatypeAsString(t: Table): string {
+  // Generate a Dafny datatype declaration for a single table schema
+  function SchemaDatatypeAsString(t: Table): string {
     var header := "  datatype " + t.name + " = " + t.name + "(\n";
+    var fields := SchemaFieldsAsString(t.columns);
     var footer := "  )\n";
-    header + DatatypeFieldsAsString(t.columns) + footer
+    header + fields + footer
   }
 
-  // Generate a complete module with datatypes
+  // Helper function to generate fields string
+  function SchemaFieldsAsString(cols: seq<Column>): string {
+    if |cols| == 0 then "" else "    " + cols[0].name + ": " + cols[0].typ + ",\n" + SchemaFieldsAsString(cols[1..])
+  }
+
+  // Generate a complete module with schema datatypes
   function ModuleAsString(tables: seq<Table>, moduleName: string): string {
     var header := "module " + moduleName + " {\n\n";
     var footer := "}\n";
-    var datatypes := "";
-    var i := 0;
-    while i < |tables|
-      decreases |tables| - i
-    {
-      datatypes := datatypes + DatatypeAsString(tables[i]);
-      i := i + 1;
-    }
+    var datatypes := ModuleDatatypesAsString(tables);
     header + datatypes + footer
+  }
+
+  // Helper function to generate datatypes string
+  function ModuleDatatypesAsString(tables: seq<Table>): string {
+    if |tables| == 0 then "" else SchemaDatatypeAsString(tables[0]) + ModuleDatatypesAsString(tables[1..])
   }
   
   // Main entry point - read the YAML file, parse it, and emit Dafny datatypes
   method Main(args: seq<string>)
   {
     if |args| < 2 {
-      WriteLine("Usage: yaml_to_datatype <file.yml> [module_name]");
+      WriteLine("Usage: yaml_to_schema_datatype <schema.yml> [output_file] [module_name]");
       return;
     }
     
     var path := args[1];
-    var moduleName := if |args| >= 3 then args[2] else "GeneratedTypes";
+    var outputFile := if |args| >= 3 then args[2] else "generated_schema_types.dfy";
+    var moduleName := if |args| >= 4 then args[3] else "GeneratedSchemaTypes";
     
     WriteLine("Reading file: " + path);
     var content := ReadAllLines(path);
     WriteLine("File read, parsing YAML...");
-    var tables := ParseYaml(content);
-    WriteLine("YAML parsed, generating datatypes...");
+    var tables := ParseSchemaYaml(content);
+    WriteLine("YAML parsed, generating schema datatypes...");
     
-    WriteLine(ModuleAsString(tables, moduleName));
+    var generatedCode := ModuleAsString(tables, moduleName);
+    WriteLine("Generated code:");
+    WriteLine(generatedCode);
+    WriteToFile(outputFile, generatedCode);
+    WriteLine("Code written to: " + outputFile);
     WriteLine("Done!");
   }
 } 

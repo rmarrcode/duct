@@ -25,9 +25,9 @@ public class ExternalFunctions {
         }
     }
     
-    public static Dafny.ISequence<YamlToDafnyTranslator._ITable> ParseYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
+    public static Dafny.ISequence<YamlToSchemaDatatypeTranslator._ITable> ParseSchemaYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
         try {
-            Console.WriteLine($"ParseYaml called with {lines.Count} lines");
+            Console.WriteLine($"ParseSchemaYaml called with {lines.Count} lines");
             
             // Convert Dafny sequences to C# strings
             var stringLines = new List<string>();
@@ -37,9 +37,10 @@ public class ExternalFunctions {
                 Console.WriteLine($"Line {i}: '{line}'");
             }
             
-            var tables = new List<YamlToDafnyTranslator._ITable>();
-            var currentTable = (YamlToDafnyTranslator._ITable)null;
-            var currentColumns = new List<YamlToDafnyTranslator._IColumn>();
+            var tables = new List<YamlToSchemaDatatypeTranslator._ITable>();
+            var currentTable = (YamlToSchemaDatatypeTranslator._ITable)null;
+            var currentColumns = new List<YamlToSchemaDatatypeTranslator._IColumn>();
+            var inColumnsSection = false;
             
             for (int i = 0; i < stringLines.Count; i++) {
                 string line = stringLines[i].TrimEnd();
@@ -51,36 +52,9 @@ public class ExternalFunctions {
                 
                 Console.WriteLine($"Processing line: '{line}'");
                 
-                // Check if this is a table entry (starts with "- name:" after trimming)
-                if (line.TrimStart().StartsWith("- name:")) {
-                    Console.WriteLine($"Found table entry: {line}");
-                    // Save previous table if exists
-                    if (currentTable != null) {
-                        // Create new table with current columns
-                        currentTable = YamlToDafnyTranslator.Table.create(
-                            currentTable.dtor_name,
-                            Dafny.Sequence<YamlToDafnyTranslator._IColumn>.FromElements(currentColumns.ToArray())
-                        );
-                        tables.Add(currentTable);
-                    }
-                    
-                    // Start new table
-                    string tableName = line.TrimStart().Substring("- name:".Length).Trim();
-                    currentTable = YamlToDafnyTranslator.Table.create(
-                        Dafny.Sequence<Dafny.Rune>.UnicodeFromString(tableName),
-                        Dafny.Sequence<YamlToDafnyTranslator._IColumn>.Empty
-                    );
-                    currentColumns.Clear();
-                }
-                // Check if this is a columns section
-                else if (line.TrimStart().StartsWith("columns:")) {
-                    Console.WriteLine($"Found columns section: {line}");
-                    // Columns section started, continue to next line
-                    continue;
-                }
-                // Check if this is a column entry (starts with "- name:" after trimming)
-                else if (line.TrimStart().StartsWith("- name:") && currentTable != null) {
-                    Console.WriteLine($"Found column entry: {line}");
+                // Check if this is a column entry (starts with "- name:" and we're in columns section)
+                if (line.TrimStart().StartsWith("- name:") && inColumnsSection && currentTable != null) {
+                    Console.WriteLine($"Found column entry: {line} (inColumnsSection: {inColumnsSection})");
                     string columnName = line.TrimStart().Substring("- name:".Length).Trim();
                     
                     // Look for the type on the next line
@@ -89,7 +63,7 @@ public class ExternalFunctions {
                         if (nextLine.TrimStart().StartsWith("type:")) {
                             string columnType = nextLine.TrimStart().Substring("type:".Length).Trim();
                             Console.WriteLine($"Found column type: {columnType} for {columnName}");
-                            currentColumns.Add(YamlToDafnyTranslator.Column.create(
+                            currentColumns.Add(YamlToSchemaDatatypeTranslator.Column.create(
                                 Dafny.Sequence<Dafny.Rune>.UnicodeFromString(columnName),
                                 Dafny.Sequence<Dafny.Rune>.UnicodeFromString(columnType)
                             ));
@@ -97,97 +71,62 @@ public class ExternalFunctions {
                         }
                     }
                 }
+                // Check if this is a table entry (starts with "- name:" and we're not in columns section)
+                else if (line.TrimStart().StartsWith("- name:") && !inColumnsSection) {
+                    Console.WriteLine($"Found table entry: {line} (inColumnsSection: {inColumnsSection})");
+                    // Save previous table if exists
+                    if (currentTable != null) {
+                        // Create new table with current columns
+                        currentTable = YamlToSchemaDatatypeTranslator.Table.create(
+                            currentTable.dtor_name,
+                            Dafny.Sequence<YamlToSchemaDatatypeTranslator._IColumn>.FromElements(currentColumns.ToArray())
+                        );
+                        tables.Add(currentTable);
+                    }
+                    
+                    // Start new table
+                    string tableName = line.TrimStart().Substring("- name:".Length).Trim();
+                    currentTable = YamlToSchemaDatatypeTranslator.Table.create(
+                        Dafny.Sequence<Dafny.Rune>.UnicodeFromString(tableName),
+                        Dafny.Sequence<YamlToSchemaDatatypeTranslator._IColumn>.Empty
+                    );
+                    currentColumns.Clear();
+                    inColumnsSection = false; // Reset for new table
+                }
+                // Check if this is a columns section
+                else if (line.TrimStart().StartsWith("columns:")) {
+                    Console.WriteLine($"Found columns section: {line}");
+                    inColumnsSection = true;
+                    Console.WriteLine($"Set inColumnsSection to true");
+                    continue;
+                }
+                // If we see a line that doesn't start with "- name:" or "type:" and we're in columns section, exit columns section
+                else if (inColumnsSection && !line.TrimStart().StartsWith("- name:") && !line.TrimStart().StartsWith("type:")) {
+                    Console.WriteLine($"Exiting columns section: {line}");
+                    inColumnsSection = false;
+                    Console.WriteLine($"Set inColumnsSection to false");
+                }
+                // Debug: log any other "- name:" lines that don't match our patterns
+                else if (line.TrimStart().StartsWith("- name:")) {
+                    Console.WriteLine($"DEBUG: Found unmatched - name: line: '{line}' (inColumnsSection: {inColumnsSection})");
+                }
             }
             
             // Add the last table if exists
             if (currentTable != null) {
-                currentTable = YamlToDafnyTranslator.Table.create(
+                currentTable = YamlToSchemaDatatypeTranslator.Table.create(
                     currentTable.dtor_name,
-                    Dafny.Sequence<YamlToDafnyTranslator._IColumn>.FromElements(currentColumns.ToArray())
+                    Dafny.Sequence<YamlToSchemaDatatypeTranslator._IColumn>.FromElements(currentColumns.ToArray())
                 );
                 tables.Add(currentTable);
             }
             
             Console.WriteLine($"Parsed {tables.Count} tables");
-            return Dafny.Sequence<YamlToDafnyTranslator._ITable>.FromElements(tables.ToArray());
+            return Dafny.Sequence<YamlToSchemaDatatypeTranslator._ITable>.FromElements(tables.ToArray());
         }
         catch (Exception ex) {
             Console.Error.WriteLine($"Error parsing YAML: {ex.Message}");
-            return Dafny.Sequence<YamlToDafnyTranslator._ITable>.FromElements();
-        }
-    }
-    
-    public static Dafny.ISequence<YamlToDafnyTranslator._IRow> ParseDataYaml(Dafny.ISequence<Dafny.ISequence<Dafny.Rune>> lines) {
-        try {
-            Console.WriteLine($"ParseDataYaml called with {lines.Count} lines");
-            
-            // Convert Dafny sequences to C# strings
-            var stringLines = new List<string>();
-            for (int i = 0; i < lines.Count; i++) {
-                string line = string.Join("", lines.CloneAsArray()[i].Select(r => r.ToString()));
-                stringLines.Add(line);
-                Console.WriteLine($"Data Line {i}: '{line}'");
-            }
-            
-            var rows = new List<YamlToDafnyTranslator._IRow>();
-            var currentTableName = "";
-            var currentValues = new List<string>();
-            
-            for (int i = 0; i < stringLines.Count; i++) {
-                string line = stringLines[i].TrimEnd();
-                
-                // Skip empty lines
-                if (string.IsNullOrWhiteSpace(line)) {
-                    continue;
-                }
-                
-                Console.WriteLine($"Processing data line: '{line}'");
-                
-                // Check if this is a table name (e.g., "users:")
-                if (line.TrimStart().EndsWith(":") && !line.TrimStart().StartsWith("-")) {
-                    currentTableName = line.TrimStart().TrimEnd(':');
-                    Console.WriteLine($"Found table: {currentTableName}");
-                    continue;
-                }
-                
-                // Check if this is a data row (starts with "- ")
-                if (line.TrimStart().StartsWith("- ")) {
-                    Console.WriteLine($"Found data row: {line}");
-                    
-                    // Parse the values from the row
-                    string rowData = line.TrimStart().Substring("- ".Length);
-                    var values = new List<string>();
-                    
-                    // Simple parsing: split by commas or spaces
-                    // This is a basic implementation - could be enhanced for more complex data
-                    string[] parts = rowData.Split(',');
-                    foreach (string part in parts) {
-                        string trimmed = part.Trim();
-                        if (!string.IsNullOrEmpty(trimmed)) {
-                            values.Add(trimmed);
-                        }
-                    }
-                    
-                    if (values.Count > 0) {
-                        var rowValues = new List<Dafny.ISequence<Dafny.Rune>>();
-                        foreach (string value in values) {
-                            rowValues.Add(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(value));
-                        }
-                        
-                        rows.Add(YamlToDafnyTranslator.Row.create(
-                            Dafny.Sequence<Dafny.Rune>.UnicodeFromString(currentTableName),
-                            Dafny.Sequence<Dafny.ISequence<Dafny.Rune>>.FromElements(rowValues.ToArray())
-                        ));
-                    }
-                }
-            }
-            
-            Console.WriteLine($"Parsed {rows.Count} data rows");
-            return Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements(rows.ToArray());
-        }
-        catch (Exception ex) {
-            Console.Error.WriteLine($"Error parsing data YAML: {ex.Message}");
-            return Dafny.Sequence<YamlToDafnyTranslator._IRow>.FromElements();
+            return Dafny.Sequence<YamlToSchemaDatatypeTranslator._ITable>.FromElements();
         }
     }
     
@@ -200,4 +139,16 @@ public class ExternalFunctions {
             Console.Error.WriteLine($"Error writing line: {ex.Message}");
         }
     }
-}
+    
+    public static void WriteToFile(Dafny.ISequence<Dafny.Rune> filename, Dafny.ISequence<Dafny.Rune> content) {
+        try {
+            string filePath = string.Join("", filename.Select(r => r.ToString()));
+            string fileContent = string.Join("", content.Select(r => r.ToString()));
+            File.WriteAllText(filePath, fileContent);
+            Console.WriteLine($"File written to: {filePath}");
+        }
+        catch (Exception ex) {
+            Console.Error.WriteLine($"Error writing file: {ex.Message}");
+        }
+    }
+} 

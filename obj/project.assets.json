@@ -954,9 +954,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.csproj",
-      "projectName": "yaml_to_obj_copy",
-      "projectPath": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.csproj",
+      "projectUniqueName": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj",
+      "projectName": "yaml_to_row_datatype",
+      "projectPath": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj",
       "packagesPath": "/Users/ryanmarr/.nuget/packages/",
       "outputPath": "/Users/ryanmarr/Documents/duct_env/duct/obj/",
       "projectStyle": "PackageReference",

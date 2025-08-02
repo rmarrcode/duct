@@ -12,8 +12,8 @@
 
   
   <ItemGroup>
-      <Compile Include="/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.cs" />
-<Compile Include="/Users/ryanmarr/Documents/duct_env/duct/ExternalFunctions_copy.cs" />
+      <Compile Include="/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.cs" />
+<Compile Include="/Users/ryanmarr/Documents/duct_env/duct/ExternalFunctions.cs" />
 
       <PackageReference Include="System.Runtime.Numerics" Version="4.3.0" />
       <PackageReference Include="System.Collections.Immutable" Version="1.7.1" />

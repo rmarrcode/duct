@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "wuX1NYsLARc=",
+  "dgSpecHash": "3PihGxhjeQE=",
   "success": true,
-  "projectFilePath": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_obj_copy.csproj",
+  "projectFilePath": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj",
   "expectedPackageFiles": [
     "/Users/ryanmarr/.nuget/packages/microsoft.netcore.platforms/1.1.0/microsoft.netcore.platforms.1.1.0.nupkg.sha512",
     "/Users/ryanmarr/.nuget/packages/microsoft.netcore.targets/1.1.0/microsoft.netcore.targets.1.1.0.nupkg.sha512",

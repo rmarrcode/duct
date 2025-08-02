@@ -18,4 +18,4 @@ tables:
       - name: content
         type: string
       - name: created_at
-        type: datetime 
+        type: string
