@@ -3,7 +3,6 @@ module YamlToSchemaDatatypeTranslator {
 
   method {:extern "ExternalFunctions", "ReadAllLines"} ReadAllLines(path: string) returns (lines: seq<string>)
 
-  // Schema YAML parsing is delegated to externally supplied code
   method {:extern "ExternalFunctions", "ParseSchemaYaml"} ParseSchemaYaml(lines: seq<string>) returns (tables: seq<Table>)
 
   method {:extern "ExternalFunctions", "WriteLine"} WriteLine(s: string)
