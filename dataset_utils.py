@@ -32,10 +32,6 @@ def find_django_files(directory: str) -> List[str]:
 
     return priority_files + django_files
 
-import os
-import ast
-from typing import Dict, Tuple, Set, List, Optional
-
 def _find_module_file(from_file: str, module_fullname: str) -> Optional[str]:
     parts = module_fullname.split(".")
     cur = os.path.dirname(from_file)
@@ -59,11 +55,21 @@ def _parse_file(file_path: str) -> Tuple[ast.Module, str]:
         src = f.read()
     return ast.parse(src), src
 
-def _collect_functions(module_ast: ast.Module) -> Dict[str, ast.FunctionDef]:
+def _collect_functions_and_methods(module_ast: ast.Module) -> Dict[str, ast.FunctionDef]:
+    """Collect both standalone functions and class methods"""
     funcs: Dict[str, ast.FunctionDef] = {}
+    
     for node in module_ast.body:
         if isinstance(node, ast.FunctionDef):
             funcs[node.name] = node
+        elif isinstance(node, ast.ClassDef):
+            # Add class methods
+            for class_node in node.body:
+                if isinstance(class_node, ast.FunctionDef):
+                    # Use class_name.method_name as key
+                    method_key = f"{node.name}.{class_node.name}"
+                    funcs[method_key] = class_node
+    
     return funcs
 
 def _collect_imported_names(module_ast: ast.Module) -> Dict[str, Tuple[str, str]]:
@@ -85,13 +91,43 @@ def _called_names_in_function(func: ast.FunctionDef) -> Set[str]:
                 called.add(f.id)
     return called
 
+def _var_class_bindings(func: ast.FunctionDef, imports: Dict[str, Tuple[str, str]]) -> Dict[str, Tuple[str, str]]:
+    """Map local variable names to (module, class_name) when assigned from imported classes."""
+    bindings: Dict[str, Tuple[str, str]] = {}
+    for node in ast.walk(func):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+            callee = node.value.func
+            if isinstance(callee, ast.Name) and callee.id in imports:
+                mod, orig = imports[callee.id]
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        bindings[t.id] = (mod, orig)
+    return bindings
+
+def _method_calls(func: ast.FunctionDef) -> List[Tuple[str, str]]:
+    """Return (var_name, method_name) for calls like var.method(...)."""
+    calls: List[Tuple[str, str]] = []
+    for node in ast.walk(func):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            calls.append((node.func.value.id, node.func.attr))
+    return calls
+
+def _str_calls(func: ast.FunctionDef) -> List[str]:
+    """Return variable names used in str(var) calls."""
+    vars_used: List[str] = []
+    for node in ast.walk(func):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "str":
+            if node.args and isinstance(node.args[0], ast.Name):
+                vars_used.append(node.args[0].id)
+    return vars_used
+
 def _unparse_func(func: ast.FunctionDef) -> str:
     return ast.unparse(func)
 
 def expand_function_with_imports_recursive(file_path: str, function_name: str) -> str:
     try:
         module_ast, _ = _parse_file(file_path)
-        funcs = _collect_functions(module_ast)
+        funcs = _collect_functions_and_methods(module_ast)
         imports = _collect_imported_names(module_ast)
 
         if function_name not in funcs:
@@ -101,10 +137,22 @@ def expand_function_with_imports_recursive(file_path: str, function_name: str) -
         to_resolve: List[Tuple[str, str, str]] = []
         seen_funcs: Set[Tuple[str, str]] = set()
 
+        # Regular imported function calls
         for name in _called_names_in_function(target_func):
             if name in imports:
                 mod, orig = imports[name]
                 to_resolve.append((mod, orig, file_path))
+
+        # Resolve instance method calls and str(var)
+        bindings = _var_class_bindings(target_func, imports)
+        for var, method in _method_calls(target_func):
+            if var in bindings:
+                mod, cls = bindings[var]
+                to_resolve.append((mod, f"{cls}.{method}", file_path))
+        for var in _str_calls(target_func):
+            if var in bindings:
+                mod, cls = bindings[var]
+                to_resolve.append((mod, f"{cls}.__str__", file_path))
 
         expanded: Dict[str, Dict[str, Dict[str, str]]] = {}
 
@@ -120,7 +168,7 @@ def expand_function_with_imports_recursive(file_path: str, function_name: str) -
                 continue
 
             mod_ast, _ = _parse_file(mod_file)
-            mod_funcs = _collect_functions(mod_ast)
+            mod_funcs = _collect_functions_and_methods(mod_ast)
             mod_imports = _collect_imported_names(mod_ast)
 
             if orig_name not in mod_funcs:
@@ -133,24 +181,19 @@ def expand_function_with_imports_recursive(file_path: str, function_name: str) -
                 expanded[mod] = {"file": mod_file, "funcs": {}}
             expanded[mod]["funcs"][orig_name] = func_src
 
+            # Recurse within resolved function/method
             for name in _called_names_in_function(func_node):
                 if name in mod_imports:
                     sub_mod, sub_orig = mod_imports[name]
-                    sub_key = (sub_mod, sub_orig)
-                    if sub_key not in seen_funcs:
+                    if (sub_mod, sub_orig) not in seen_funcs:
                         to_resolve.append((sub_mod, sub_orig, mod_file))
 
         out: List[str] = []
-        
-        # Add all function implementations first
         for mod in sorted(expanded.keys()):
             for fname in sorted(expanded[mod]["funcs"].keys()):
                 out.append(expanded[mod]["funcs"][fname])
                 out.append("")
-        
-        # Add main function
         out.append(_unparse_func(target_func))
-
         return "\n".join(out)
 
     except Exception as e:
