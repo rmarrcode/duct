@@ -130,8 +130,15 @@ def expand_function_with_imports_recursive(file_path: str, function_name: str) -
         funcs = _collect_functions_and_methods(module_ast)
         imports = _collect_imported_names(module_ast)
 
+        # First try to find the exact function name
         if function_name not in funcs:
-            return f"Function '{function_name}' not found in {file_path}"
+            # If not found, try to find it as a method in any class
+            for key in funcs.keys():
+                if key.endswith(f".{function_name}"):
+                    function_name = key
+                    break
+            else:
+                return f"Function '{function_name}' not found in {file_path}"
 
         target_func = funcs[function_name]
         to_resolve: List[Tuple[str, str, str]] = []
