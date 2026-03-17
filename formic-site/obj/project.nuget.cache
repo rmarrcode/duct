@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "/8+knBOcYj3x4VEz4d0XM1I7r/knLQI1/zAxSxL7NF4MJ5lBX5mBFmwEj6vc1Eu1OGfJBrab6e5NebCQAx13OA==",
+  "dgSpecHash": "9loZrkviFF1WfCPsyEzPNZ1uJJQzMYL94tVi+HiIhr5fgD72DROeBSWRJDhFY4JGGGQIAtBLc3eXl41CtofdZQ==",
   "success": true,
-  "projectFilePath": "/home/ryan-marr/Documents/secret/duct_env/formic-site/FormicSite.csproj",
+  "projectFilePath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/FormicSite.csproj",
   "expectedPackageFiles": [
     "/tmp/nuget/microsoft.aspnetcore.authentication.google/8.0.18/microsoft.aspnetcore.authentication.google.8.0.18.nupkg.sha512"
   ],

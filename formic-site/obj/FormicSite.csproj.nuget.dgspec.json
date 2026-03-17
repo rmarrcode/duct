@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/ryan-marr/Documents/secret/duct_env/formic-site/FormicSite.csproj": {}
+    "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/FormicSite.csproj": {}
   },
   "projects": {
-    "/home/ryan-marr/Documents/secret/duct_env/formic-site/FormicSite.csproj": {
+    "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/FormicSite.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/ryan-marr/Documents/secret/duct_env/formic-site/FormicSite.csproj",
+        "projectUniqueName": "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/FormicSite.csproj",
         "projectName": "FormicSite",
-        "projectPath": "/home/ryan-marr/Documents/secret/duct_env/formic-site/FormicSite.csproj",
+        "projectPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/FormicSite.csproj",
         "packagesPath": "/tmp/nuget",
-        "outputPath": "/home/ryan-marr/Documents/secret/duct_env/formic-site/obj/",
+        "outputPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic-site/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/ryan-marr/.nuget/NuGet/NuGet.Config"

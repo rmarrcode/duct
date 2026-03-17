@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FormicSite")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+53bcf02447417effbc9b277178a0c806ccb35034")]
 [assembly: System.Reflection.AssemblyProductAttribute("FormicSite")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FormicSite")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
