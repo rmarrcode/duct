@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit sign-in | formic-site</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 2rem; max-width: 720px; }
+    form { display: grid; gap: 1rem; }
+    label { font-weight: 600; }
+    input { padding: 0.6rem 0.7rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; }
+    small { color: #4b5563; }
+    a.button { display: inline-block; padding: 0.6rem 1rem; border-radius: 8px; background: #111827; color: white; text-decoration: none; font-weight: 700; }
+    button { padding: 0.7rem 1rem; border-radius: 8px; border: none; background: #1a73e8; color: #fff; font-weight: 700; cursor: pointer; }
+    .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.6rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem; }
+    .chip.success { background: #e8f5e9; color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <p><a class="button" href="/">← Back</a></p>
+  <h2>Edit sign-in info</h2>
+  {{SAVED_BANNER}}
+  <form action="/settings" method="post">
+    <div>
+      <label for="clientId">Google Client ID</label><br />
+      <input id="clientId" name="clientId" value="{{CLIENT_ID_VALUE}}" autocomplete="off" required />
+      <small>Found under Google Cloud Console → Credentials → OAuth 2.0 Client IDs.</small>
+    </div>
+    <div>
+      <label for="clientSecret">Google Client Secret</label><br />
+      <input id="clientSecret" name="clientSecret" type="password" placeholder="••••••••" autocomplete="off" />
+      <small>Leave empty to keep the current secret.</small>
+    </div>
+    <div>
+      <button type="submit">Save</button>
+    </div>
+  </form>
+</body>
+</html>
