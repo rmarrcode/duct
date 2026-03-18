@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+
+# User configs/secrets
+appsettings.Development.json
+*.user
+*.userosscache
+*.suo
+profiles.json
+
+# IDE
+.idea/
+.vs/
+.vscode/
+
+# Certificates
+*.pfx
+
+# Logs
+*.log
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+artifacts/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -13,3 +13,11 @@
 /Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.dll
 /Users/ryanmarr/Documents/duct_env/duct/obj/Debug/net8.0/ref/yaml_to_row_datatype.dll
 /Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.pdb
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.GeneratedMSBuildEditorConfig.editorconfig
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.AssemblyInfoInputs.cache
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.AssemblyInfo.cs
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.csproj.CoreCompileInputs.cache
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.sourcelink.json
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/refint/yaml_to_row_datatype.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/obj/Debug/net8.0/yaml_to_row_datatype.pdb

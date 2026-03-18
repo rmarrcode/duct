@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit profile | formic-site</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 2rem; max-width: 720px; }
+    form { display: grid; gap: 1rem; }
+    label { font-weight: 600; }
+    textarea { width: 100%; min-height: 160px; padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; }
+    small { color: #4b5563; }
+    a.button { display: inline-block; padding: 0.6rem 1rem; border-radius: 8px; background: #111827; color: white; text-decoration: none; font-weight: 700; }
+    button { padding: 0.7rem 1rem; border-radius: 8px; border: none; background: #1a73e8; color: #fff; font-weight: 700; cursor: pointer; }
+    .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.6rem; border-radius: 999px; font-weight: 600; font-size: 0.9rem; }
+    .chip.success { background: #e8f5e9; color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <p><a class="button" href="/">← Back</a></p>
+  <h2>Edit profile note</h2>
+  {{SAVED_BANNER}}
+  <form action="/profile" method="post">
+    <div>
+      <label for="about">Your note</label><br />
+      <textarea id="about" name="about" autocomplete="off" placeholder="Tell us something about you...">{{ABOUT_VALUE}}</textarea>
+      <small>Stored per user; shown on your home card.</small>
+    </div>
+    <div>
+      <button type="submit">Save</button>
+    </div>
+  </form>
+</body>
+</html>

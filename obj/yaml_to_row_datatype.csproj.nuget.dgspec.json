@@ -1,26 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj": {}
+    "/home/ryan-marr/Documents/secret/duct_env/duct/yaml_to_row_datatype.csproj": {}
   },
   "projects": {
-    "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj": {
+    "/home/ryan-marr/Documents/secret/duct_env/duct/yaml_to_row_datatype.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj",
+        "projectUniqueName": "/home/ryan-marr/Documents/secret/duct_env/duct/yaml_to_row_datatype.csproj",
         "projectName": "yaml_to_row_datatype",
-        "projectPath": "/Users/ryanmarr/Documents/duct_env/duct/yaml_to_row_datatype.csproj",
-        "packagesPath": "/Users/ryanmarr/.nuget/packages/",
-        "outputPath": "/Users/ryanmarr/Documents/duct_env/duct/obj/",
+        "projectPath": "/home/ryan-marr/Documents/secret/duct_env/duct/yaml_to_row_datatype.csproj",
+        "packagesPath": "/home/ryan-marr/.nuget/packages/",
+        "outputPath": "/home/ryan-marr/Documents/secret/duct_env/duct/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/ryanmarr/.nuget/NuGet/NuGet.Config"
+          "/home/ryan-marr/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "/opt/homebrew/Cellar/dotnet/9.0.7/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -33,13 +32,7 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.100"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -65,26 +58,12 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[8.0.18, 8.0.18]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Host.osx-arm64",
-              "version": "[8.0.18, 8.0.18]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Ref",
-              "version": "[8.0.18, 8.0.18]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.7/libexec/sdk/9.0.108/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.125/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

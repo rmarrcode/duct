@@ -1,0 +1,15 @@
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.GeneratedMSBuildEditorConfig.editorconfig
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.AssemblyInfoInputs.cache
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.AssemblyInfo.cs
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.csproj.CoreCompileInputs.cache
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.sourcelink.json
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/refint/Demo1.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.pdb
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.deps.json
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/Demo1.genruntimeconfig.cache
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.runtimeconfig.json
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/Debug/net6.0/ref/Demo1.dll
+/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.pdb
