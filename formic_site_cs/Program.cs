@@ -7,6 +7,11 @@ using System.Threading;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.VisualBasic;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
+using Microsoft.AspNetCore.Mvc;
 
 const string PictureClaim = "urn:google:picture";
 
@@ -61,56 +66,42 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", async (HttpContext context, IConfiguration config) =>
+// Build API endpoints using the modeled classes (matches Demo1.dfy ideas).
+var apiEndpoints = new AllApiEndpoints();
+
+apiEndpoints.Add(new ApiEndpoint("/", async context =>
 {
-    var user = context.User;
-    var authenticated = user?.Identity?.IsAuthenticated ?? false;
-    var name = WebUtility.HtmlEncode(user?.Identity?.Name ?? "Guest");
-    var email = WebUtility.HtmlEncode(user?.FindFirstValue(ClaimTypes.Email));
-    var picture = user?.FindFirst(PictureClaim)?.Value;
-    var pictureHtml = picture is not null
-        ? $"<img class=\"avatar\" src=\"{picture}\" alt=\"avatar\" />"
-        : string.Empty;
-    var clientId = config["Authentication:Google:ClientId"];
-    var clientIdLabelRaw = string.IsNullOrWhiteSpace(clientId)
-        ? "Not set"
-        : clientId.Length > 8
-            ? $"{clientId[..4]}…{clientId[^4..]}"
-            : clientId;
-    var clientIdLabel = WebUtility.HtmlEncode(clientIdLabelRaw);
+    var userInfo = ToUserInfo(context.User);
 
-    var about = email is not null ? await profileStore.GetAsync(WebUtility.HtmlDecode(email)) : null;
-    var aboutCard = authenticated
-        ? $@"<div class=""card"">
-      <h3>Your note</h3>
-      <p>{(string.IsNullOrWhiteSpace(about) ? "Add something on your <a href=\"/profile\">profile page</a>." : Htmlize(about))}</p>
-      <p><a class=""pill-link"" href=""/profile"">Edit profile note →</a></p>
-    </div>"
-        : @"<div class=""card"">
-      <h3>Your note</h3>
-      <p>Sign in to add a short note to your profile.</p>
-      <p><a class=""pill-link"" href=""/login"">Sign in →</a></p>
-    </div>";
-
-    var loginBlock = authenticated
+    var aboutCard = await BuildAboutCard(userInfo, profileStore);
+    var loginBlock = userInfo.Authenticated
         ? "<p class=\"chip success\">Signed in with Google</p><p><a class=\"button secondary\" href=\"/logout\">Log out</a></p>"
         : "<p class=\"chip neutral\">Anonymous</p><p><a class=\"button\" href=\"/login\">Continue with Google</a></p>";
 
-    var emailRow = email is not null ? $"<div><strong>Email:</strong> {email}</div>" : string.Empty;
+    var emailRow = string.IsNullOrEmpty(userInfo.Email)
+        ? string.Empty
+        : $"<div><strong>Email:</strong> {WebUtility.HtmlEncode(userInfo.Email)}</div>";
 
-    var html = RenderTemplate(homeTemplate, new Dictionary<string, string>
-    {
-        ["PICTURE_HTML"] = pictureHtml,
-        ["STATUS"] = authenticated ? "Signed in" : "Anonymous",
-        ["USER"] = name,
-        ["EMAIL_ROW"] = emailRow,
-        ["LOGIN_BLOCK"] = loginBlock,
-        ["CLIENT_ID_LABEL"] = clientIdLabel,
-        ["ABOUT_CARD"] = aboutCard
-    });
+    var pictureHtml = string.IsNullOrEmpty(userInfo.Picture)
+        ? string.Empty
+        : $"<img class=\"avatar\" src=\"{userInfo.Picture}\" alt=\"avatar\" />";
+
+    var html = RenderHomeTemplate(
+        homeTemplate,
+        pictureHtml,
+        userInfo.Authenticated ? "Signed in" : "Anonymous",
+        WebUtility.HtmlEncode(userInfo.Name),
+        emailRow,
+        loginBlock,
+        aboutCard);
 
     return Results.Content(html, "text/html");
-});
+}));
+
+foreach (var ep in apiEndpoints.All())
+{
+    app.MapGet(ep.ApiUrl, ep.Handler);
+}
 
 app.MapGet("/settings", (IConfiguration config, string? saved) =>
 {
@@ -246,7 +237,77 @@ static string Htmlize(string? text)
     return encoded.Replace("\n", "<br />");
 }
 
+static UserInfo ToUserInfo(ClaimsPrincipal user) => new(
+    Name: user?.Identity?.Name ?? "Guest",
+    Email: user?.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
+    Picture: user?.FindFirst(PictureClaim)?.Value ?? string.Empty,
+    Authenticated: user?.Identity?.IsAuthenticated ?? false);
+
+static async Task<string> BuildAboutCard(UserInfo user, ProfileStore store)
+{
+    if (!user.Authenticated)
+    {
+        return @"<div class=""card"">
+      <h3>Your note</h3>
+      <p>Sign in to add a short note to your profile.</p>
+      <p><a class=""pill-link"" href=""/login"">Sign in →</a></p>
+    </div>";
+    }
+
+    var about = await store.GetAsync(user.Email);
+    var body = string.IsNullOrWhiteSpace(about)
+        ? "Add something on your <a href=\"/profile\">profile page</a>."
+        : Htmlize(about);
+
+    return $@"<div class=""card"">
+      <h3>Your note</h3>
+      <p>{body}</p>
+      <p><a class=""pill-link"" href=""/profile"">Edit profile note →</a></p>
+    </div>";
+}
+
+static string RenderHomeTemplate(
+    string template,
+    string pictureHtml,
+    string status,
+    string name,
+    string emailRow,
+    string loginBlock,
+    string aboutCard) =>
+    RenderTemplate(template, new Dictionary<string, string>
+    {
+        ["PICTURE_HTML"] = pictureHtml,
+        ["STATUS"] = status,
+        ["USER"] = name,
+        ["EMAIL_ROW"] = emailRow,
+        ["LOGIN_BLOCK"] = loginBlock,
+        ["ABOUT_CARD"] = aboutCard
+    });
+
 record GoogleAuthSettings(string ClientId, string ClientSecret);
+
+record UserInfo(string Name, string Email, string Picture, bool Authenticated);
+
+class ApiEndpoint
+{
+    public string ApiUrl { get; }
+    public Func<HttpContext, Task<IResult>> Handler { get; }
+
+    public ApiEndpoint(string apiUrl, Func<HttpContext, Task<IResult>> handler)
+    {
+        ApiUrl = apiUrl;
+        Handler = handler;
+    }
+}
+
+class AllApiEndpoints
+{
+    private readonly List<ApiEndpoint> _endpoints = new();
+
+    public void Add(ApiEndpoint ep) => _endpoints.Add(ep);
+
+    public IEnumerable<ApiEndpoint> All() => _endpoints;
+}
 
 class ProfileStore
 {
