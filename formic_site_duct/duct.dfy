@@ -8,11 +8,6 @@ module DuctApi {
     picture: string,
     authenticated: bool)
 
-  trait {:termination false} IGenerator {
-    method Generate(user: UserInfo) returns (content: string)
-      ensures content != ""
-  }
-
   class ApiEndpoint {
     var apiUrl: string;
     var returnType: ReturnType;
@@ -63,4 +58,22 @@ module DuctApi {
       ep := endpoints[i];
     }
   }
+}
+
+
+module SpecsTools {
+
+  function Contains(haystack: string, needle: string): bool {
+    exists i :: 0 <= i <= |haystack| - |needle| && haystack[i .. i + |needle|] == needle
+  }
+
+  function {:compile true} Link(label: string, url: string): string {
+    "<a href=" + url + ">" + label + "</a>"
+  }
+
+  trait {:termination false} IGenerator {
+    method Generate(user: UserInfo) returns (content: string)
+      ensures content != ""
+  }
+
 }
