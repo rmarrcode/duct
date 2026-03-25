@@ -2,21 +2,22 @@ include "duct.dfy"
 include "formic.specs.duct.dfy"
 
 module DuctImpl {
+
   import opened DuctApi
   import opened DuctSpecs
+  import opened SpecsTools
 
   /// Concrete landing page generator that satisfies the specs.
-  class FormicLandingPage extends FormicLandingSpec {
+  class FormicLandingPage extends IGenerator {
+
     constructor () {}
 
+    ghost predicate PreCondition(u: UserInfo) { LandingPagePre(u) }
+    ghost predicate PostCondition(u: UserInfo, html: string) { LandingPagePost(u, html) }
+
     method Generate(ctx: UserInfo) returns (html: string)
-      requires ctx.name != ""
-      ensures html != ""
-      ensures Contains(html, ctx.name)
-      ensures (ctx.email == "" ==> true) && (ctx.email != "" ==> Contains(html, ctx.email))
-      ensures (ctx.picture == "" ==> true) && (ctx.picture != "" ==> Contains(html, ctx.picture))
-      ensures ctx.authenticated ==> (Contains(html, "Signed in") && Contains(html, Link("Log out", "/logout")))
-      ensures !ctx.authenticated ==> (Contains(html, "Anonymous") && Contains(html, Link("Sign in", "/login")))
+      requires PreCondition(ctx) 
+      ensures PostCondition(ctx, html)
     {
       var status := if ctx.authenticated then "Signed in" else "Anonymous";
       var signIn := Link("Sign in", "/login");

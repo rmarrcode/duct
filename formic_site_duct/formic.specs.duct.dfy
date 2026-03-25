@@ -1,26 +1,25 @@
 module DuctSpecs {
+
   import opened DuctApi
+  import opened SpecsTools
 
-  function Contains(haystack: string, needle: string): bool {
-    exists i :: 0 <= i <= |haystack| - |needle| && haystack[i .. i + |needle|] == needle
+  ghost predicate LandingPagePre(ctx: UserInfo)
+  {
+    ctx.name != ""
   }
 
-  function Link(label: string, url: string): string {
-    "<a href=\"" + url + "\">" + label + "</a>"
+  ghost predicate LandingPagePost(ctx: UserInfo, html: string)
+  {
+    html != "" &&
+    Contains(html, ctx.name) &&
+    (ctx.email == "" || Contains(html, ctx.email)) &&
+    (ctx.picture == "" || Contains(html, ctx.picture)) &&
+    (ctx.authenticated ==
+      (Contains(html, "Signed in") &&
+       Contains(html, Link("Log out", "/logout")))) &&
+    (!ctx.authenticated ==
+      (Contains(html, "Anonymous") &&
+       Contains(html, Link("Sign in", "/login"))))
   }
 
-  trait FormicLandingSpec extends IGenerator {
-    method Generate(ctx: UserInfo) returns (html: string);
-      requires ctx.name != ""                // minimal precondition: we have a display name
-      ensures html != ""
-      ensures Contains(html, ctx.name)       // name must appear
-      ensures (ctx.email == "" ==> true) && (ctx.email != "" ==> Contains(html, ctx.email))
-      ensures (ctx.picture == "" ==> true) && (ctx.picture != "" ==> Contains(html, ctx.picture))
-      ensures ctx.authenticated ==> (
-        Contains(html, "Signed in") &&
-        Contains(html, Link("Log out", "/logout")))
-      ensures !ctx.authenticated ==> (
-        Contains(html, "Anonymous") &&
-        Contains(html, Link("Sign in", "/login")))
-  }
 }

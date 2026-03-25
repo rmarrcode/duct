@@ -8,7 +8,18 @@ module DuctApi {
     picture: string,
     authenticated: bool)
 
+  trait {:termination false} IGenerator {
+
+    ghost predicate PreCondition(u: UserInfo)
+    ghost predicate PostCondition(u: UserInfo, html: string)
+
+    method Generate(user: UserInfo) returns (content: string)
+      requires PreCondition(user)
+      ensures PostCondition(user, content)
+  }
+
   class ApiEndpoint {
+    
     var apiUrl: string;
     var returnType: ReturnType;
     var generator: IGenerator;
@@ -60,20 +71,14 @@ module DuctApi {
   }
 }
 
-
 module SpecsTools {
 
   function Contains(haystack: string, needle: string): bool {
     exists i :: 0 <= i <= |haystack| - |needle| && haystack[i .. i + |needle|] == needle
   }
 
-  function {:compile true} Link(label: string, url: string): string {
-    "<a href=" + url + ">" + label + "</a>"
-  }
-
-  trait {:termination false} IGenerator {
-    method Generate(user: UserInfo) returns (content: string)
-      ensures content != ""
+  function {:compile true} Link(linkLabel: string, url: string): string {
+    "<a href=\"" + url + "\">" + linkLabel + "</a>"
   }
 
 }

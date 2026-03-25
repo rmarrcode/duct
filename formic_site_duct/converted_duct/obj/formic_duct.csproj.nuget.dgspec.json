@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.csproj": {}
+    "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct.csproj": {}
   },
   "projects": {
-    "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.csproj": {
+    "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.csproj",
-        "projectName": "Demo1",
-        "projectPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/Demo1.csproj",
+        "projectUniqueName": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct.csproj",
+        "projectName": "formic_duct",
+        "projectPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct.csproj",
         "packagesPath": "/home/ryan-marr/.nuget/packages/",
-        "outputPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/obj/",
+        "outputPath": "/home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/ryan-marr/.nuget/NuGet/NuGet.Config"
@@ -61,10 +61,6 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[6.0.36, 6.0.36]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Host.linux-x64",
               "version": "[6.0.36, 6.0.36]"
             },
             {
