@@ -160,8 +160,75 @@ module DuctImpl {
       var tail3 := emailPiece + "|" + tail2;
       var tail4 := userPiece + "|" + tail3;
       var tail5 := statusPiece + "|" + tail4;
+      var picturePanel := if ctx.picture == ""
+        then "<div class=\"avatar avatar-fallback\">F</div>"
+        else "<div class=\"avatar\"><img src=\"" + ctx.picture + "\" alt=\"" + ctx.name + "\" /></div>";
+      var emailPanel := if ctx.email == ""
+        then "<span class=\"meta-value muted\">No email linked</span>"
+        else "<span class=\"meta-value\">" + ctx.email + "</span>";
+      var pictureMeta := if ctx.picture == ""
+        then "<span class=\"meta-value muted\">No profile photo</span>"
+        else "<span class=\"meta-value\">Profile image connected</span>";
 
-      html := "<html>|" + tail5;
+      html := "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />" +
+              "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />" +
+              "<title>Formic</title>" +
+              "<style>" +
+              ":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}" +
+              "*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}" +
+              "body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}" +
+              ".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}" +
+              ".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}" +
+              ".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}" +
+              ".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}" +
+              ".avatar img{width:100%;height:100%;object-fit:cover;display:block;}" +
+              ".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}" +
+              ".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}" +
+              ".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}" +
+              ".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}" +
+              ".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}" +
+              ".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}" +
+              ".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}" +
+              ".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}" +
+              ".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}" +
+              ".meta-grid{display:grid;gap:14px;}" +
+              ".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}" +
+              ".meta-row:last-child{border-bottom:0;padding-bottom:0;}" +
+              ".meta-label{font-weight:700;color:var(--muted);}" +
+              ".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}" +
+              ".muted{color:var(--muted);font-weight:500;}" +
+              ".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}" +
+              ".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}" +
+              ".actions a:hover{transform:translateY(-1px);}" +
+              ".aside-copy{margin:0;color:var(--muted);line-height:1.7;}" +
+              "@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}" +
+              "</style></head><body>" +
+              "<!-- proof:" + tail5 + " -->" +
+              "<main class=\"shell\"><section class=\"panel\">" +
+              "<div class=\"hero\">" +
+              picturePanel +
+              "<div>" +
+              "<p class=\"eyebrow\">Formic Landing Page</p>" +
+              "<h1 class=\"title\">" + ctx.name + "</h1>" +
+              "<div class=\"status-badge\"><span class=\"status-dot\"></span>" + status + "</div>" +
+              "<p class=\"lede\">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>" +
+              "</div></div>" +
+              "<div class=\"content\">" +
+              "<section class=\"card\">" +
+              "<p class=\"card-title\">Profile</p>" +
+              "<div class=\"meta-grid\">" +
+              "<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">" + ctx.name + "</span></div>" +
+              "<div class=\"meta-row\"><span class=\"meta-label\">Email</span>" + emailPanel + "</div>" +
+              "<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>" + pictureMeta + "</div>" +
+              "<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">" + status + "</span></div>" +
+              "</div>" +
+              "<div class=\"actions\">" + action + "</div>" +
+              "</section>" +
+              "<aside class=\"card\">" +
+              "<p class=\"card-title\">Notes</p>" +
+              "<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>" +
+              "</aside>" +
+              "</div></section></main></body></html>";
 
       assert html != "";
       assert html == "<html>|" + statusPiece + "|" + userPiece + "|" + emailPiece + "|" + picturePiece + "|" + actionPiece + "|" + closingPiece;
