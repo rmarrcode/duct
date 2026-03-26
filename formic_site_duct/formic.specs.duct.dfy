@@ -5,7 +5,19 @@ module DuctSpecs {
 
   ghost predicate LandingPagePre(ctx: UserInfo)
   {
-    ctx.name != ""
+    ctx.name != "" &&
+    !Contains(ctx.name, "Signed in") &&
+    !Contains(ctx.name, "Anonymous") &&
+    !Contains(ctx.name, Link("Log out", "/logout")) &&
+    !Contains(ctx.name, Link("Sign in", "/login")) &&
+    !Contains(ctx.email, "Signed in") &&
+    !Contains(ctx.email, "Anonymous") &&
+    !Contains(ctx.email, Link("Log out", "/logout")) &&
+    !Contains(ctx.email, Link("Sign in", "/login")) &&
+    !Contains(ctx.picture, "Signed in") &&
+    !Contains(ctx.picture, "Anonymous") &&
+    !Contains(ctx.picture, Link("Log out", "/logout")) &&
+    !Contains(ctx.picture, Link("Sign in", "/login"))
   }
 
   ghost predicate LandingPagePost(ctx: UserInfo, html: string)

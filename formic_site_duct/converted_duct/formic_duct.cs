@@ -9,55 +9,370 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs formic.duct.dfy duct.dfy --include-runtime --allow-warnings --output converted_duct/formic_duct
+// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
-module FormicCatalog {
-  function Contains(haystack: string, needle: string): bool
+module FormicProofHelpers {
+  lemma /*{:_induction prefix, needle, suffix}*/ ContainsInserted(prefix: string, needle: string, suffix: string)
+    ensures Contains(prefix + needle + suffix, needle)
+    decreases |prefix|
+  {
+    if |needle| == 0 {
+    } else if |prefix| == 0 {
+      assert (prefix + needle + suffix)[0 .. |needle|] == needle;
+    } else {
+      assert (prefix + needle + suffix)[1..] == prefix[1..] + needle + suffix;
+      ContainsInserted(prefix[1..], needle, suffix);
+    }
+  }
+
+  lemma /*{:_induction haystack, needle}*/ ContainsTail(haystack: string, needle: string)
+    requires |haystack| > 0
+    ensures Contains(haystack[1..], needle) ==> Contains(haystack, needle)
     decreases haystack, needle
   {
-    true
   }
+
+  lemma /*{:_induction s}*/ NoBarIfCharAbsent(s: string)
+    requires '|' !in s
+    ensures !Contains(s, ""|"")
+    decreases |s|
+  {
+    if |s| > 0 {
+      assert s[0] != '|';
+      NoBarIfCharAbsent(s[1..]);
+    }
+  }
+
+  lemma /*{:_induction needle}*/ CrossingBarCannotMatch(left: string, right: string, needle: string)
+    requires 0 < |needle|
+    requires |left| < |needle|
+    requires |needle| <= |left| + 1 + |right|
+    requires !Contains(needle, ""|"")
+    ensures (left + ""|"" + right)[0 .. |needle|] != needle
+    decreases left, right, needle
+  {
+    if (left + ""|"" + right)[0 .. |needle|] == needle {
+      assert needle[|left| .. |left| + 1] == ""|"";
+      assert needle == needle[..|left|] + ""|"" + needle[|left| + 1..];
+      ContainsInserted(needle[..|left|], ""|"", needle[|left| + 1..]);
+      assert Contains(needle, ""|"");
+    }
+  }
+
+  lemma /*{:_induction left, right, needle}*/ NoContainsJoinedByBar(left: string, right: string, needle: string)
+    requires !Contains(left, needle)
+    requires !Contains(right, needle)
+    requires !Contains(needle, ""|"")
+    ensures !Contains(left + ""|"" + right, needle)
+    decreases |left|
+  {
+    if |needle| == 0 {
+      assert false;
+    } else if |left| == 0 {
+      assert (left + ""|"" + right)[1..] == right;
+      assert !Contains((left + ""|"" + right)[1..], needle);
+      if |needle| <= |left| + 1 + |right| {
+        CrossingBarCannotMatch(left, right, needle);
+      }
+    } else {
+      assert (left + ""|"" + right)[1..] == left[1..] + ""|"" + right;
+      if Contains(left[1..], needle) {
+        ContainsTail(left, needle);
+        assert false;
+      }
+      assert !Contains(left[1..], needle);
+      NoContainsJoinedByBar(left[1..], right, needle);
+      assert !Contains((left + ""|"" + right)[1..], needle);
+      if |needle| <= |left| + 1 + |right| {
+        if |left| < |needle| {
+          CrossingBarCannotMatch(left, right, needle);
+        } else {
+          if (left + ""|"" + right)[0 .. |needle|] == needle {
+            assert left[0 .. |needle|] == needle;
+            assert Contains(left, needle);
+          }
+        }
+      }
+    }
+  }
+
+  lemma /*{:_induction haystack, needle}*/ EqualLengthDifferentNoContains(haystack: string, needle: string)
+    requires |haystack| == |needle|
+    requires haystack != needle
+    ensures !Contains(haystack, needle)
+    decreases haystack, needle
+  {
+    assert haystack[0 .. |needle|] != needle;
+    assert |haystack[1..]| < |needle|;
+  }
+
+  lemma LoginLinkHasNoBar()
+    ensures !Contains(Link(""Sign in"", ""/login""), ""|"")
+  {
+    assert Link(""Sign in"", ""/login"") == ""<a href=\""/login\"">Sign in</a>"";
+    assert '|' !in ""<a href=\""/login\"">Sign in</a>"";
+    NoBarIfCharAbsent(""<a href=\""/login\"">Sign in</a>"");
+  }
+
+  lemma LogoutLinkHasNoBar()
+    ensures !Contains(Link(""Log out"", ""/logout""), ""|"")
+  {
+    assert Link(""Log out"", ""/logout"") == ""<a href=\""/logout\"">Log out</a>"";
+    assert '|' !in ""<a href=\""/logout\"">Log out</a>"";
+    NoBarIfCharAbsent(""<a href=\""/logout\"">Log out</a>"");
+  }
+
+  lemma LogoutLinkDoesNotContainLoginLink()
+    ensures !Contains(Link(""Log out"", ""/logout""), Link(""Sign in"", ""/login""))
+  {
+    assert Link(""Log out"", ""/logout"") == ""<a href=\""/logout\"">Log out</a>"";
+    assert Link(""Sign in"", ""/login"") == ""<a href=\""/login\"">Sign in</a>"";
+    assert ""<a href=\""/logout\"">Log out</a>""[13] == 'o';
+    assert Link(""Sign in"", ""/login"")[13] == 'i';
+    assert ""<a href=\""/logout\"">Log out</a>""[0 .. |Link(""Sign in"", ""/login"")|][13] == 'o';
+    assert ""<a href=\""/logout\"">Log out</a>""[0 .. |Link(""Sign in"", ""/login"")|] != Link(""Sign in"", ""/login"");
+    assert ""<a href=\""/logout\"">Log out</a>""[1..] == ""a href=\""/logout\"">Log out</a>"";
+    assert ""<a href=\""/logout\"">Log out</a>""[1..] != Link(""Sign in"", ""/login"");
+    EqualLengthDifferentNoContains(""<a href=\""/logout\"">Log out</a>""[1..], Link(""Sign in"", ""/login""));
+    assert !Contains(""<a href=\""/logout\"">Log out</a>""[1..], Link(""Sign in"", ""/login""));
+  }
+
+  import opened SpecsTools
+}
+
+module DuctImpl {
 
   import opened DuctApi
 
-  class RenderHomeGenerator extends IGenerator {
+  import opened DuctSpecs
+
+  import opened SpecsTools
+
+  import FormicProofHelpers
+  class FormicLandingPage extends IGenerator {
     constructor ()
     {
     }
 
+    ghost predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      LandingPagePre(u)
+    }
+
+    ghost predicate PostCondition(u: UserInfo, html: string)
+      decreases u, html
+    {
+      LandingPagePost(u, html)
+    }
+
     method Generate(ctx: UserInfo) returns (html: string)
-      ensures html != """"
-      ensures Contains(html, ctx.name)
-      ensures (ctx.email == """" ==> true) && (ctx.email != """" ==> Contains(html, ctx.email))
-      ensures (ctx.picture == """" ==> true) && (ctx.picture != """" ==> Contains(html, ctx.picture))
-      ensures ctx.authenticated ==> Contains(html, ""Signed in"") && Contains(html, ""Log out"") && Contains(html, ""/logout"")
-      ensures !ctx.authenticated ==> Contains(html, ""Anonymous"") && Contains(html, ""Continue with Google"") && Contains(html, ""/login"")
+      requires PreCondition(ctx)
+      ensures PostCondition(ctx, html)
       decreases ctx
     {
-      var signInLabel := ""Continue with Google"";
-      var signInUrl := ""/login"";
-      var logoutLabel := ""Log out"";
-      var logoutUrl := ""/logout"";
       var status := if ctx.authenticated then ""Signed in"" else ""Anonymous"";
-      var tail1 := signInLabel + logoutLabel + signInUrl + logoutUrl;
-      var tail2 := status + tail1;
-      var tail3 := ctx.picture + tail2;
-      var tail4 := ctx.email + tail3;
-      html := ctx.name + tail4;
-    }
-  }
-
-  class Catalog {
-    static method Endpoints() returns (all: AllApiEndpoints)
-      ensures |all.endpoints| == 1
-    {
-      var catalog := new AllApiEndpoints();
-      var generator := new RenderHomeGenerator();
-      var ep := new ApiEndpoint(""/"", ReturnType.Content, generator);
-      catalog.Add(ep);
-      return catalog;
+      var action := if ctx.authenticated then Link(""Log out"", ""/logout"") else Link(""Sign in"", ""/login"");
+      var statusPiece := ""status|"" + status;
+      var userPiece := ""user|"" + ctx.name;
+      var emailPiece := ""email|"" + ctx.email;
+      var picturePiece := ""picture|"" + ctx.picture;
+      var actionPiece := ""action|"" + action;
+      var closingPiece := ""</html>"";
+      var tail1 := actionPiece + ""|"" + closingPiece;
+      var tail2 := picturePiece + ""|"" + tail1;
+      var tail3 := emailPiece + ""|"" + tail2;
+      var tail4 := userPiece + ""|"" + tail3;
+      var tail5 := statusPiece + ""|"" + tail4;
+      html := ""<html>|"" + tail5;
+      assert html != """";
+      assert html == ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
+      var statusPrefix := ""<html>|status|"";
+      var statusSuffix := ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
+      var statusHaystack := statusPrefix + status + statusSuffix;
+      FormicProofHelpers.ContainsInserted(statusPrefix, status, statusSuffix);
+      assert html == statusHaystack;
+      assert Contains(statusHaystack, status);
+      assert Contains(html, status);
+      var namePrefix := ""<html>|"" + statusPiece + ""|user|"";
+      var nameSuffix := ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
+      var nameHaystack := namePrefix + ctx.name + nameSuffix;
+      FormicProofHelpers.ContainsInserted(namePrefix, ctx.name, nameSuffix);
+      assert html == nameHaystack;
+      assert Contains(nameHaystack, ctx.name);
+      assert Contains(html, ctx.name);
+      var actionPrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|action|"";
+      var actionSuffix := ""|"" + closingPiece;
+      var actionHaystack := actionPrefix + action + actionSuffix;
+      FormicProofHelpers.ContainsInserted(actionPrefix, action, actionSuffix);
+      assert html == actionHaystack;
+      assert Contains(actionHaystack, action);
+      assert Contains(html, action);
+      if ctx.email != """" {
+        var emailPrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|email|"";
+        var emailSuffix := ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
+        var emailHaystack := emailPrefix + ctx.email + emailSuffix;
+        FormicProofHelpers.ContainsInserted(emailPrefix, ctx.email, emailSuffix);
+        assert html == emailHaystack;
+        assert Contains(emailHaystack, ctx.email);
+        assert Contains(html, ctx.email);
+      }
+      if ctx.picture != """" {
+        var picturePrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|picture|"";
+        var pictureSuffix := ""|"" + actionPiece + ""|"" + closingPiece;
+        var pictureHaystack := picturePrefix + ctx.picture + pictureSuffix;
+        FormicProofHelpers.ContainsInserted(picturePrefix, ctx.picture, pictureSuffix);
+        assert html == pictureHaystack;
+        assert Contains(pictureHaystack, ctx.picture);
+        assert Contains(html, ctx.picture);
+      }
+      assert ctx.email == """" || Contains(html, ctx.email);
+      assert ctx.picture == """" || Contains(html, ctx.picture);
+      if ctx.authenticated {
+        var missingAction := Link(""Sign in"", ""/login"");
+        assert missingAction == Link(""Sign in"", ""/login"");
+        assert missingAction == ""<a href=\""/login\"">Sign in</a>"";
+        assert '|' !in ""<a href=\""/login\"">Sign in</a>"";
+        FormicProofHelpers.LoginLinkHasNoBar();
+        assert !Contains(missingAction, ""|"");
+        assert status == ""Signed in"";
+        assert action == Link(""Log out"", ""/logout"");
+        assert action == ""<a href=\""/logout\"">Log out</a>"";
+        assert Contains(html, ""Signed in"");
+        assert Contains(html, Link(""Log out"", ""/logout""));
+        assert !Contains(""<html>"", missingAction);
+        assert !Contains(""status"", missingAction);
+        assert !Contains(status, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""status"", status, missingAction);
+        assert statusPiece == ""status|"" + status;
+        assert !Contains(""status|"" + status, missingAction);
+        assert !Contains(statusPiece, missingAction);
+        assert !Contains(""user"", missingAction);
+        assert !Contains(ctx.name, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""user"", ctx.name, missingAction);
+        var userMissingHaystack := ""user"" + ""|"" + ctx.name;
+        assert userPiece == ""user|"" + ctx.name;
+        assert userMissingHaystack == ""user|"" + ctx.name;
+        assert !Contains(userMissingHaystack, missingAction);
+        assert !Contains(userPiece, missingAction);
+        assert !Contains(""email"", missingAction);
+        assert !Contains(ctx.email, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""email"", ctx.email, missingAction);
+        var emailMissingHaystack := ""email"" + ""|"" + ctx.email;
+        assert emailPiece == ""email|"" + ctx.email;
+        assert emailMissingHaystack == ""email|"" + ctx.email;
+        assert !Contains(emailMissingHaystack, missingAction);
+        assert !Contains(emailPiece, missingAction);
+        assert !Contains(""picture"", missingAction);
+        assert !Contains(ctx.picture, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""picture"", ctx.picture, missingAction);
+        var pictureMissingHaystack := ""picture"" + ""|"" + ctx.picture;
+        assert picturePiece == ""picture|"" + ctx.picture;
+        assert pictureMissingHaystack == ""picture|"" + ctx.picture;
+        assert !Contains(pictureMissingHaystack, missingAction);
+        assert !Contains(picturePiece, missingAction);
+        assert !Contains(""action"", missingAction);
+        FormicProofHelpers.LogoutLinkDoesNotContainLoginLink();
+        assert !Contains(action, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""action"", action, missingAction);
+        var actionMissingHaystack := ""action"" + ""|"" + action;
+        assert actionPiece == ""action|"" + action;
+        assert actionMissingHaystack == ""action|"" + action;
+        assert !Contains(actionMissingHaystack, missingAction);
+        assert !Contains(actionPiece, missingAction);
+        assert !Contains(closingPiece, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(actionPiece, closingPiece, missingAction);
+        assert !Contains(tail1, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(picturePiece, tail1, missingAction);
+        assert !Contains(tail2, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(emailPiece, tail2, missingAction);
+        assert !Contains(tail3, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(userPiece, tail3, missingAction);
+        assert !Contains(tail4, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(statusPiece, tail4, missingAction);
+        assert !Contains(tail5, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""<html>"", tail5, missingAction);
+        var htmlMissingHaystack := ""<html>"" + ""|"" + tail5;
+        assert html == htmlMissingHaystack;
+        assert !Contains(htmlMissingHaystack, missingAction);
+        assert !Contains(html, missingAction);
+        assert ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
+        assert !(Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
+        assert !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
+      } else {
+        var missingAction := Link(""Log out"", ""/logout"");
+        assert missingAction == Link(""Log out"", ""/logout"");
+        assert missingAction == ""<a href=\""/logout\"">Log out</a>"";
+        assert '|' !in ""<a href=\""/logout\"">Log out</a>"";
+        FormicProofHelpers.LogoutLinkHasNoBar();
+        assert !Contains(missingAction, ""|"");
+        assert status == ""Anonymous"";
+        assert action == Link(""Sign in"", ""/login"");
+        assert Contains(html, status);
+        assert Contains(html, action);
+        assert Contains(html, ""Anonymous"");
+        assert Contains(html, Link(""Sign in"", ""/login""));
+        assert !Contains(""<html>"", missingAction);
+        assert !Contains(""status"", missingAction);
+        assert !Contains(status, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""status"", status, missingAction);
+        assert statusPiece == ""status|"" + status;
+        assert !Contains(""status|"" + status, missingAction);
+        assert !Contains(statusPiece, missingAction);
+        assert !Contains(""user"", missingAction);
+        assert !Contains(ctx.name, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""user"", ctx.name, missingAction);
+        var userMissingHaystack := ""user"" + ""|"" + ctx.name;
+        assert userPiece == ""user|"" + ctx.name;
+        assert userMissingHaystack == ""user|"" + ctx.name;
+        assert !Contains(userMissingHaystack, missingAction);
+        assert !Contains(userPiece, missingAction);
+        assert !Contains(""email"", missingAction);
+        assert !Contains(ctx.email, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""email"", ctx.email, missingAction);
+        var emailMissingHaystack := ""email"" + ""|"" + ctx.email;
+        assert emailPiece == ""email|"" + ctx.email;
+        assert emailMissingHaystack == ""email|"" + ctx.email;
+        assert !Contains(emailMissingHaystack, missingAction);
+        assert !Contains(emailPiece, missingAction);
+        assert !Contains(""picture"", missingAction);
+        assert !Contains(ctx.picture, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""picture"", ctx.picture, missingAction);
+        var pictureMissingHaystack := ""picture"" + ""|"" + ctx.picture;
+        assert picturePiece == ""picture|"" + ctx.picture;
+        assert pictureMissingHaystack == ""picture|"" + ctx.picture;
+        assert !Contains(pictureMissingHaystack, missingAction);
+        assert !Contains(picturePiece, missingAction);
+        assert !Contains(""action"", missingAction);
+        assert !Contains(action, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""action"", action, missingAction);
+        var actionMissingHaystack := ""action"" + ""|"" + action;
+        assert actionPiece == ""action|"" + action;
+        assert actionMissingHaystack == ""action|"" + action;
+        assert !Contains(actionMissingHaystack, missingAction);
+        assert !Contains(actionPiece, missingAction);
+        assert !Contains(closingPiece, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(actionPiece, closingPiece, missingAction);
+        assert !Contains(tail1, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(picturePiece, tail1, missingAction);
+        assert !Contains(tail2, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(emailPiece, tail2, missingAction);
+        assert !Contains(tail3, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(userPiece, tail3, missingAction);
+        assert !Contains(tail4, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(statusPiece, tail4, missingAction);
+        assert !Contains(tail5, missingAction);
+        FormicProofHelpers.NoContainsJoinedByBar(""<html>"", tail5, missingAction);
+        var htmlMissingHaystack := ""<html>"" + ""|"" + tail5;
+        assert html == htmlMissingHaystack;
+        assert !Contains(htmlMissingHaystack, missingAction);
+        assert !Contains(html, missingAction);
+        assert !(Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
+        assert ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
+        assert !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
+      }
     }
   }
 }
@@ -68,8 +383,15 @@ module DuctApi {
   datatype UserInfo = UserInfo(name: string, email: string, picture: string, authenticated: bool)
 
   trait {:termination false} IGenerator {
+    ghost predicate PreCondition(u: UserInfo)
+      decreases u
+
+    ghost predicate PostCondition(u: UserInfo, html: string)
+      decreases u, html
+
     method Generate(user: UserInfo) returns (content: string)
-      ensures content != """"
+      requires PreCondition(user)
+      ensures PostCondition(user, content)
       decreases user
   }
 
@@ -125,6 +447,144 @@ module DuctApi {
       ep := endpoints[i];
     }
   }
+}
+
+module SpecsTools {
+  function Contains(haystack: string, needle: string): bool
+    decreases |haystack|
+  {
+    if |needle| == 0 then
+      true
+    else if |haystack| < |needle| then
+      false
+    else
+      haystack[0 .. |needle|] == needle || Contains(haystack[1..], needle)
+  }
+
+  lemma /*{:_induction prefix, needle, suffix}*/ ContainsInserted(prefix: string, needle: string, suffix: string)
+    ensures Contains(prefix + needle + suffix, needle)
+    decreases |prefix|
+  {
+    if |needle| == 0 {
+    } else if |prefix| == 0 {
+      assert (prefix + needle + suffix)[0 .. |needle|] == needle;
+    } else {
+      assert (prefix + needle + suffix)[1..] == prefix[1..] + needle + suffix;
+      ContainsInserted(prefix[1..], needle, suffix);
+    }
+  }
+
+  lemma /*{:_induction haystack, needle}*/ ContainsTail(haystack: string, needle: string)
+    requires |haystack| > 0
+    ensures Contains(haystack[1..], needle) ==> Contains(haystack, needle)
+    decreases haystack, needle
+  {
+  }
+
+  lemma /*{:_induction s}*/ NoBarIfCharAbsent(s: string)
+    requires '|' !in s
+    ensures !Contains(s, ""|"")
+    decreases |s|
+  {
+    if |s| > 0 {
+      assert s[0] != '|';
+      NoBarIfCharAbsent(s[1..]);
+    }
+  }
+
+  lemma /*{:_induction needle}*/ CrossingBarCannotMatch(left: string, right: string, needle: string)
+    requires 0 < |needle|
+    requires |left| < |needle|
+    requires |needle| <= |left| + 1 + |right|
+    requires !Contains(needle, ""|"")
+    ensures (left + ""|"" + right)[0 .. |needle|] != needle
+    decreases left, right, needle
+  {
+    if (left + ""|"" + right)[0 .. |needle|] == needle {
+      assert needle[|left| .. |left| + 1] == ""|"";
+      assert needle == needle[..|left|] + ""|"" + needle[|left| + 1..];
+      ContainsInserted(needle[..|left|], ""|"", needle[|left| + 1..]);
+      assert Contains(needle, ""|"");
+    }
+  }
+
+  lemma /*{:_induction left, right, needle}*/ NoContainsJoinedByBar(left: string, right: string, needle: string)
+    requires !Contains(left, needle)
+    requires !Contains(right, needle)
+    requires !Contains(needle, ""|"")
+    ensures !Contains(left + ""|"" + right, needle)
+    decreases |left|
+  {
+    if |needle| == 0 {
+      assert false;
+    } else if |left| == 0 {
+      assert (left + ""|"" + right)[1..] == right;
+      assert !Contains((left + ""|"" + right)[1..], needle);
+      if |needle| <= |left| + 1 + |right| {
+        CrossingBarCannotMatch(left, right, needle);
+      }
+    } else {
+      assert (left + ""|"" + right)[1..] == left[1..] + ""|"" + right;
+      if Contains(left[1..], needle) {
+        ContainsTail(left, needle);
+        assert false;
+      }
+      assert !Contains(left[1..], needle);
+      NoContainsJoinedByBar(left[1..], right, needle);
+      assert !Contains((left + ""|"" + right)[1..], needle);
+      if |needle| <= |left| + 1 + |right| {
+        if |left| < |needle| {
+          CrossingBarCannotMatch(left, right, needle);
+        } else {
+          if (left + ""|"" + right)[0 .. |needle|] == needle {
+            assert left[0 .. |needle|] == needle;
+            assert Contains(left, needle);
+          }
+        }
+      }
+    }
+  }
+
+  function {:compile true} Link(linkLabel: string, url: string): string
+    decreases linkLabel, url
+  {
+    ""<a href=\"""" + url + ""\"">"" + linkLabel + ""</a>""
+  }
+}
+
+module DuctSpecs {
+  ghost predicate LandingPagePre(ctx: UserInfo)
+    decreases ctx
+  {
+    ctx.name != """" &&
+    !Contains(ctx.name, ""Signed in"") &&
+    !Contains(ctx.name, ""Anonymous"") &&
+    !Contains(ctx.name, Link(""Log out"", ""/logout"")) &&
+    !Contains(ctx.name, Link(""Sign in"", ""/login"")) &&
+    !Contains(ctx.email, ""Signed in"") &&
+    !Contains(ctx.email, ""Anonymous"") &&
+    !Contains(ctx.email, Link(""Log out"", ""/logout"")) &&
+    !Contains(ctx.email, Link(""Sign in"", ""/login"")) &&
+    !Contains(ctx.picture, ""Signed in"") &&
+    !Contains(ctx.picture, ""Anonymous"") &&
+    !Contains(ctx.picture, Link(""Log out"", ""/logout"")) &&
+    !Contains(ctx.picture, Link(""Sign in"", ""/login""))
+  }
+
+  ghost predicate LandingPagePost(ctx: UserInfo, html: string)
+    decreases ctx, html
+  {
+    html != """" &&
+    Contains(html, ctx.name) &&
+    (ctx.email == """" || Contains(html, ctx.email)) &&
+    (ctx.picture == """" || Contains(html, ctx.picture)) &&
+    ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) &&
+    !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
+  }
+
+  import opened DuctApi
+
+  import opened SpecsTools
 }
 ")]
 
@@ -5799,6 +6259,28 @@ internal static class FuncExtensions {
   }
 }
 // end of class FuncExtensions
+namespace SpecsTools {
+
+  public partial class __default {
+    public static bool Contains(Dafny.ISequence<Dafny.Rune> haystack, Dafny.ISequence<Dafny.Rune> needle)
+    {
+      if ((new BigInteger((needle).Count)).Sign == 0) {
+        return true;
+      } else if ((new BigInteger((haystack).Count)) < (new BigInteger((needle).Count))) {
+        return false;
+      } else {
+        return (((haystack).Subsequence(BigInteger.Zero, new BigInteger((needle).Count))).Equals(needle)) || (SpecsTools.__default.Contains((haystack).Drop(BigInteger.One), needle));
+      }
+    }
+    public static Dafny.ISequence<Dafny.Rune> Link(Dafny.ISequence<Dafny.Rune> linkLabel, Dafny.ISequence<Dafny.Rune> url)
+    {
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<a href=\""), url), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\">")), linkLabel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</a>"));
+    }
+  }
+} // end of namespace SpecsTools
+namespace FormicProofHelpers {
+
+} // end of namespace FormicProofHelpers
 namespace DuctApi {
 
 
@@ -6013,17 +6495,14 @@ namespace DuctApi {
     }
   }
 } // end of namespace DuctApi
-namespace FormicCatalog {
+namespace DuctSpecs {
 
-  public partial class __default {
-    public static bool Contains(Dafny.ISequence<Dafny.Rune> haystack, Dafny.ISequence<Dafny.Rune> needle)
-    {
-      return true;
-    }
-  }
+} // end of namespace DuctSpecs
+namespace DuctImpl {
 
-  public partial class RenderHomeGenerator : DuctApi.IGenerator {
-    public RenderHomeGenerator() {
+
+  public partial class FormicLandingPage : DuctApi.IGenerator {
+    public FormicLandingPage() {
     }
     public void __ctor()
     {
@@ -6031,58 +6510,106 @@ namespace FormicCatalog {
     public Dafny.ISequence<Dafny.Rune> Generate(DuctApi._IUserInfo ctx)
     {
       Dafny.ISequence<Dafny.Rune> html = Dafny.Sequence<Dafny.Rune>.Empty;
-      Dafny.ISequence<Dafny.Rune> _0_signInLabel;
-      _0_signInLabel = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Continue with Google");
-      Dafny.ISequence<Dafny.Rune> _1_signInUrl;
-      _1_signInUrl = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login");
-      Dafny.ISequence<Dafny.Rune> _2_logoutLabel;
-      _2_logoutLabel = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out");
-      Dafny.ISequence<Dafny.Rune> _3_logoutUrl;
-      _3_logoutUrl = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout");
-      Dafny.ISequence<Dafny.Rune> _4_status;
+      Dafny.ISequence<Dafny.Rune> _0_status;
       if ((ctx).dtor_authenticated) {
-        _4_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in");
+        _0_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in");
       } else {
-        _4_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous");
+        _0_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous");
       }
-      Dafny.ISequence<Dafny.Rune> _5_tail1;
-      _5_tail1 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_0_signInLabel, _2_logoutLabel), _1_signInUrl), _3_logoutUrl);
-      Dafny.ISequence<Dafny.Rune> _6_tail2;
-      _6_tail2 = Dafny.Sequence<Dafny.Rune>.Concat(_4_status, _5_tail1);
-      Dafny.ISequence<Dafny.Rune> _7_tail3;
-      _7_tail3 = Dafny.Sequence<Dafny.Rune>.Concat((ctx).dtor_picture, _6_tail2);
-      Dafny.ISequence<Dafny.Rune> _8_tail4;
-      _8_tail4 = Dafny.Sequence<Dafny.Rune>.Concat((ctx).dtor_email, _7_tail3);
-      html = Dafny.Sequence<Dafny.Rune>.Concat((ctx).dtor_name, _8_tail4);
+      Dafny.ISequence<Dafny.Rune> _1_action;
+      if ((ctx).dtor_authenticated) {
+        _1_action = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+      } else {
+        _1_action = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
+      }
+      Dafny.ISequence<Dafny.Rune> _2_statusPiece;
+      _2_statusPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("status|"), _0_status);
+      Dafny.ISequence<Dafny.Rune> _3_userPiece;
+      _3_userPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user|"), (ctx).dtor_name);
+      Dafny.ISequence<Dafny.Rune> _4_emailPiece;
+      _4_emailPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email|"), (ctx).dtor_email);
+      Dafny.ISequence<Dafny.Rune> _5_picturePiece;
+      _5_picturePiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture|"), (ctx).dtor_picture);
+      Dafny.ISequence<Dafny.Rune> _6_actionPiece;
+      _6_actionPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action|"), _1_action);
+      Dafny.ISequence<Dafny.Rune> _7_closingPiece;
+      _7_closingPiece = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</html>");
+      Dafny.ISequence<Dafny.Rune> _8_tail1;
+      _8_tail1 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_6_actionPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _9_tail2;
+      _9_tail2 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_5_picturePiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _8_tail1);
+      Dafny.ISequence<Dafny.Rune> _10_tail3;
+      _10_tail3 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_4_emailPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _9_tail2);
+      Dafny.ISequence<Dafny.Rune> _11_tail4;
+      _11_tail4 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_3_userPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _10_tail3);
+      Dafny.ISequence<Dafny.Rune> _12_tail5;
+      _12_tail5 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_statusPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _11_tail4);
+      html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _12_tail5);
+      Dafny.ISequence<Dafny.Rune> _13_statusPrefix;
+      _13_statusPrefix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|status|");
+      Dafny.ISequence<Dafny.Rune> _14_statusSuffix;
+      _14_statusSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _15_statusHaystack;
+      _15_statusHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_13_statusPrefix, _0_status), _14_statusSuffix);
+      Dafny.ISequence<Dafny.Rune> _16_namePrefix;
+      _16_namePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|user|"));
+      Dafny.ISequence<Dafny.Rune> _17_nameSuffix;
+      _17_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _18_nameHaystack;
+      _18_nameHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_16_namePrefix, (ctx).dtor_name), _17_nameSuffix);
+      Dafny.ISequence<Dafny.Rune> _19_actionPrefix;
+      _19_actionPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|action|"));
+      Dafny.ISequence<Dafny.Rune> _20_actionSuffix;
+      _20_actionSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _21_actionHaystack;
+      _21_actionHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_19_actionPrefix, _1_action), _20_actionSuffix);
+      if (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
+        Dafny.ISequence<Dafny.Rune> _22_emailPrefix;
+        _22_emailPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|email|"));
+        Dafny.ISequence<Dafny.Rune> _23_emailSuffix;
+        _23_emailSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+        Dafny.ISequence<Dafny.Rune> _24_emailHaystack;
+        _24_emailHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_22_emailPrefix, (ctx).dtor_email), _23_emailSuffix);
+      }
+      if (!((ctx).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
+        Dafny.ISequence<Dafny.Rune> _25_picturePrefix;
+        _25_picturePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|picture|"));
+        Dafny.ISequence<Dafny.Rune> _26_pictureSuffix;
+        _26_pictureSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+        Dafny.ISequence<Dafny.Rune> _27_pictureHaystack;
+        _27_pictureHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_25_picturePrefix, (ctx).dtor_picture), _26_pictureSuffix);
+      }
+      if ((ctx).dtor_authenticated) {
+        Dafny.ISequence<Dafny.Rune> _28_missingAction;
+        _28_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
+        Dafny.ISequence<Dafny.Rune> _29_userMissingHaystack;
+        _29_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
+        Dafny.ISequence<Dafny.Rune> _30_emailMissingHaystack;
+        _30_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
+        Dafny.ISequence<Dafny.Rune> _31_pictureMissingHaystack;
+        _31_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
+        Dafny.ISequence<Dafny.Rune> _32_actionMissingHaystack;
+        _32_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
+        Dafny.ISequence<Dafny.Rune> _33_htmlMissingHaystack;
+        _33_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
+      } else {
+        Dafny.ISequence<Dafny.Rune> _34_missingAction;
+        _34_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+        Dafny.ISequence<Dafny.Rune> _35_userMissingHaystack;
+        _35_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
+        Dafny.ISequence<Dafny.Rune> _36_emailMissingHaystack;
+        _36_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
+        Dafny.ISequence<Dafny.Rune> _37_pictureMissingHaystack;
+        _37_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
+        Dafny.ISequence<Dafny.Rune> _38_actionMissingHaystack;
+        _38_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
+        Dafny.ISequence<Dafny.Rune> _39_htmlMissingHaystack;
+        _39_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
+      }
       return html;
     }
   }
-
-  public partial class Catalog {
-    public Catalog() {
-    }
-    public static DuctApi.AllApiEndpoints Endpoints()
-    {
-      DuctApi.AllApiEndpoints all = default(DuctApi.AllApiEndpoints);
-      DuctApi.AllApiEndpoints _0_catalog;
-      DuctApi.AllApiEndpoints _nw0 = new DuctApi.AllApiEndpoints();
-      _nw0.__ctor();
-      _0_catalog = _nw0;
-      FormicCatalog.RenderHomeGenerator _1_generator;
-      FormicCatalog.RenderHomeGenerator _nw1 = new FormicCatalog.RenderHomeGenerator();
-      _nw1.__ctor();
-      _1_generator = _nw1;
-      DuctApi.ApiEndpoint _2_ep;
-      DuctApi.ApiEndpoint _nw2 = new DuctApi.ApiEndpoint();
-      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctApi.ReturnType.create_Content(), _1_generator);
-      _2_ep = _nw2;
-      (_0_catalog).Add(_2_ep);
-      all = _0_catalog;
-      return all;
-      return all;
-    }
-  }
-} // end of namespace FormicCatalog
+} // end of namespace DuctImpl
 namespace _module {
 
 } // end of namespace _module

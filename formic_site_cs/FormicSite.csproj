@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.18" />
   </ItemGroup>
-  <ItemGroup Condition="Exists('../formic_site_duct/converted_duct')">
-    <Compile Include="../formic_site_duct/converted_duct/**/*.cs" />
+  <ItemGroup Condition="Exists('../formic_site_duct/converted_duct/formic_duct.cs')">
+    <Compile Include="../formic_site_duct/converted_duct/formic_duct.cs" Link="Generated/formic_duct.cs" />
   </ItemGroup>
 </Project>

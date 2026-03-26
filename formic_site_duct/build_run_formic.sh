@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$SCRIPT_DIR/converted_duct"
 SRC1="$SCRIPT_DIR/duct.dfy"
-SRC2="$SCRIPT_DIR/formic.duct.dfy"
+SRC2="$SCRIPT_DIR/formic.impl.duct.dfy"
 
 mkdir -p "$OUT_DIR"
 

@@ -6,9 +6,11 @@ class Views {
         ensures |all.endpoints| == 1
     {
         var catalog := new AllApiEndpoints();
-        var generator := new FormicLandingPage();
-        var ep := new ApiEndpoint("/", ReturnType.Content, generator);
+
+        var formic_landing := new FormicLandingPage();
+        var ep := new ApiEndpoint("/", ReturnType.Content, formic_landing);
         catalog.Add(ep);
+
         return catalog;
     }
 }

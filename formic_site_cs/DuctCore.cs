@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Linq;
 using Dafny;
 using DuctApi;
-using FormicCatalog;
+using DuctImpl;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -55,8 +55,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Build API endpoints using the modeled classes (matches Demo1.dfy ideas).
-// Endpoints supplied by Dafny (generated from formic.dfy). We only attach handlers here.
-AllApiEndpoints catalog = Catalog.Endpoints();
+// Endpoints supplied by Dafny (generated from formic.impl.duct.dfy). We only attach handlers here.
+// What is this shit
+AllApiEndpoints catalog = new AllApiEndpoints();
+catalog.__ctor();
+
+FormicLandingPage generator = new FormicLandingPage();
+generator.__ctor();
+
+ApiEndpoint homeEndpoint = new ApiEndpoint();
+homeEndpoint.__ctor(
+    ToDafnyString("/"),
+    ReturnType.create_Content(),
+    generator);
+catalog.Add(homeEndpoint);
+// What is this shit
 
 BigInteger endpointCount = catalog.Count();
 for (int i = 0; i < endpointCount; i++)
