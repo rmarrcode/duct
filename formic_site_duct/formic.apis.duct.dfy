@@ -1,16 +1,20 @@
-import opened DuctImpl
-import opened DuctApi
+module DuctApis {
 
-class Views {
-    static method Endpoints() returns (all: AllApiEndpoints)
-        ensures |all.endpoints| == 1
-    {
-        var catalog := new AllApiEndpoints();
+    import opened DuctImpl
+    import opened DuctTools
 
-        var formic_landing := new FormicLandingPage();
-        var ep := new ApiEndpoint("/", ReturnType.Content, formic_landing);
-        catalog.Add(ep);
+    class Views {
+        static method Endpoints() returns (all: AllApiEndpoints)
+            ensures |all.endpoints| == 1
+        {
+            var catalog := new AllApiEndpoints();
 
-        return catalog;
+            var formic_landing := new FormicLandingPage();
+            var ep := new ApiEndpoint("/", ReturnType.Content, formic_landing);
+            catalog.Add(ep);
+
+            all := catalog;
+        }
     }
+
 }

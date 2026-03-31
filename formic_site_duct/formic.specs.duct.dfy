@@ -1,6 +1,6 @@
 module DuctSpecs {
 
-  import opened DuctApi
+  import opened DuctTools
   import opened SpecsTools
 
   ghost predicate LandingPagePre(ctx: UserInfo)

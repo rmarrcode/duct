@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
@@ -144,7 +144,7 @@ module FormicProofHelpers {
 
 module DuctImpl {
 
-  import opened DuctApi
+  import opened DuctTools
 
   import opened DuctSpecs
 
@@ -380,7 +380,25 @@ module DuctImpl {
   }
 }
 
-module DuctApi {
+module DuctApis {
+
+  import opened DuctImpl
+
+  import opened DuctTools
+  class Views {
+    static method Endpoints() returns (all: AllApiEndpoints)
+      ensures |all.endpoints| == 1
+    {
+      var catalog := new AllApiEndpoints();
+      var formic_landing := new FormicLandingPage();
+      var ep := new ApiEndpoint(""/"", ReturnType.Content, formic_landing);
+      catalog.Add(ep);
+      all := catalog;
+    }
+  }
+}
+
+module DuctTools {
   datatype ReturnType = Content | Redirect
 
   datatype UserInfo = UserInfo(name: string, email: string, picture: string, authenticated: bool)
@@ -464,90 +482,6 @@ module SpecsTools {
       haystack[0 .. |needle|] == needle || Contains(haystack[1..], needle)
   }
 
-  lemma /*{:_induction prefix, needle, suffix}*/ ContainsInserted(prefix: string, needle: string, suffix: string)
-    ensures Contains(prefix + needle + suffix, needle)
-    decreases |prefix|
-  {
-    if |needle| == 0 {
-    } else if |prefix| == 0 {
-      assert (prefix + needle + suffix)[0 .. |needle|] == needle;
-    } else {
-      assert (prefix + needle + suffix)[1..] == prefix[1..] + needle + suffix;
-      ContainsInserted(prefix[1..], needle, suffix);
-    }
-  }
-
-  lemma /*{:_induction haystack, needle}*/ ContainsTail(haystack: string, needle: string)
-    requires |haystack| > 0
-    ensures Contains(haystack[1..], needle) ==> Contains(haystack, needle)
-    decreases haystack, needle
-  {
-  }
-
-  lemma /*{:_induction s}*/ NoBarIfCharAbsent(s: string)
-    requires '|' !in s
-    ensures !Contains(s, ""|"")
-    decreases |s|
-  {
-    if |s| > 0 {
-      assert s[0] != '|';
-      NoBarIfCharAbsent(s[1..]);
-    }
-  }
-
-  lemma /*{:_induction needle}*/ CrossingBarCannotMatch(left: string, right: string, needle: string)
-    requires 0 < |needle|
-    requires |left| < |needle|
-    requires |needle| <= |left| + 1 + |right|
-    requires !Contains(needle, ""|"")
-    ensures (left + ""|"" + right)[0 .. |needle|] != needle
-    decreases left, right, needle
-  {
-    if (left + ""|"" + right)[0 .. |needle|] == needle {
-      assert needle[|left| .. |left| + 1] == ""|"";
-      assert needle == needle[..|left|] + ""|"" + needle[|left| + 1..];
-      ContainsInserted(needle[..|left|], ""|"", needle[|left| + 1..]);
-      assert Contains(needle, ""|"");
-    }
-  }
-
-  lemma /*{:_induction left, right, needle}*/ NoContainsJoinedByBar(left: string, right: string, needle: string)
-    requires !Contains(left, needle)
-    requires !Contains(right, needle)
-    requires !Contains(needle, ""|"")
-    ensures !Contains(left + ""|"" + right, needle)
-    decreases |left|
-  {
-    if |needle| == 0 {
-      assert false;
-    } else if |left| == 0 {
-      assert (left + ""|"" + right)[1..] == right;
-      assert !Contains((left + ""|"" + right)[1..], needle);
-      if |needle| <= |left| + 1 + |right| {
-        CrossingBarCannotMatch(left, right, needle);
-      }
-    } else {
-      assert (left + ""|"" + right)[1..] == left[1..] + ""|"" + right;
-      if Contains(left[1..], needle) {
-        ContainsTail(left, needle);
-        assert false;
-      }
-      assert !Contains(left[1..], needle);
-      NoContainsJoinedByBar(left[1..], right, needle);
-      assert !Contains((left + ""|"" + right)[1..], needle);
-      if |needle| <= |left| + 1 + |right| {
-        if |left| < |needle| {
-          CrossingBarCannotMatch(left, right, needle);
-        } else {
-          if (left + ""|"" + right)[0 .. |needle|] == needle {
-            assert left[0 .. |needle|] == needle;
-            assert Contains(left, needle);
-          }
-        }
-      }
-    }
-  }
-
   function {:compile true} Link(linkLabel: string, url: string): string
     decreases linkLabel, url
   {
@@ -585,7 +519,7 @@ module DuctSpecs {
     !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
   }
 
-  import opened DuctApi
+  import opened DuctTools
 
   import opened SpecsTools
 }
@@ -6284,7 +6218,7 @@ namespace SpecsTools {
 namespace FormicProofHelpers {
 
 } // end of namespace FormicProofHelpers
-namespace DuctApi {
+namespace DuctTools {
 
 
   public interface _IReturnType {
@@ -6295,12 +6229,12 @@ namespace DuctApi {
   public abstract class ReturnType : _IReturnType {
     public ReturnType() {
     }
-    private static readonly DuctApi._IReturnType theDefault = create_Content();
-    public static DuctApi._IReturnType Default() {
+    private static readonly DuctTools._IReturnType theDefault = create_Content();
+    public static DuctTools._IReturnType Default() {
       return theDefault;
     }
-    private static readonly Dafny.TypeDescriptor<DuctApi._IReturnType> _TYPE = new Dafny.TypeDescriptor<DuctApi._IReturnType>(DuctApi.ReturnType.Default());
-    public static Dafny.TypeDescriptor<DuctApi._IReturnType> _TypeDescriptor() {
+    private static readonly Dafny.TypeDescriptor<DuctTools._IReturnType> _TYPE = new Dafny.TypeDescriptor<DuctTools._IReturnType>(DuctTools.ReturnType.Default());
+    public static Dafny.TypeDescriptor<DuctTools._IReturnType> _TypeDescriptor() {
       return _TYPE;
     }
     public static _IReturnType create_Content() {
@@ -6327,7 +6261,7 @@ namespace DuctApi {
       return new ReturnType_Content();
     }
     public override bool Equals(object other) {
-      var oth = other as DuctApi.ReturnType_Content;
+      var oth = other as DuctTools.ReturnType_Content;
       return oth != null;
     }
     public override int GetHashCode() {
@@ -6336,7 +6270,7 @@ namespace DuctApi {
       return (int) hash;
     }
     public override string ToString() {
-      string s = "DuctApi.ReturnType.Content";
+      string s = "DuctTools.ReturnType.Content";
       return s;
     }
   }
@@ -6348,7 +6282,7 @@ namespace DuctApi {
       return new ReturnType_Redirect();
     }
     public override bool Equals(object other) {
-      var oth = other as DuctApi.ReturnType_Redirect;
+      var oth = other as DuctTools.ReturnType_Redirect;
       return oth != null;
     }
     public override int GetHashCode() {
@@ -6357,7 +6291,7 @@ namespace DuctApi {
       return (int) hash;
     }
     public override string ToString() {
-      string s = "DuctApi.ReturnType.Redirect";
+      string s = "DuctTools.ReturnType.Redirect";
       return s;
     }
   }
@@ -6386,7 +6320,7 @@ namespace DuctApi {
       return new UserInfo(_name, _email, _picture, _authenticated);
     }
     public override bool Equals(object other) {
-      var oth = other as DuctApi.UserInfo;
+      var oth = other as DuctTools.UserInfo;
       return oth != null && object.Equals(this._name, oth._name) && object.Equals(this._email, oth._email) && object.Equals(this._picture, oth._picture) && this._authenticated == oth._authenticated;
     }
     public override int GetHashCode() {
@@ -6399,7 +6333,7 @@ namespace DuctApi {
       return (int) hash;
     }
     public override string ToString() {
-      string s = "DuctApi.UserInfo.UserInfo";
+      string s = "DuctTools.UserInfo.UserInfo";
       s += "(";
       s += this._name.ToVerbatimString(true);
       s += ", ";
@@ -6411,12 +6345,12 @@ namespace DuctApi {
       s += ")";
       return s;
     }
-    private static readonly DuctApi._IUserInfo theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, false);
-    public static DuctApi._IUserInfo Default() {
+    private static readonly DuctTools._IUserInfo theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, false);
+    public static DuctTools._IUserInfo Default() {
       return theDefault;
     }
-    private static readonly Dafny.TypeDescriptor<DuctApi._IUserInfo> _TYPE = new Dafny.TypeDescriptor<DuctApi._IUserInfo>(DuctApi.UserInfo.Default());
-    public static Dafny.TypeDescriptor<DuctApi._IUserInfo> _TypeDescriptor() {
+    private static readonly Dafny.TypeDescriptor<DuctTools._IUserInfo> _TYPE = new Dafny.TypeDescriptor<DuctTools._IUserInfo>(DuctTools.UserInfo.Default());
+    public static Dafny.TypeDescriptor<DuctTools._IUserInfo> _TypeDescriptor() {
       return _TYPE;
     }
     public static _IUserInfo create(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
@@ -6449,7 +6383,7 @@ namespace DuctApi {
   }
 
   public interface IGenerator {
-    Dafny.ISequence<Dafny.Rune> Generate(DuctApi._IUserInfo user);
+    Dafny.ISequence<Dafny.Rune> Generate(DuctTools._IUserInfo user);
   }
   public class _Companion_IGenerator {
   }
@@ -6457,13 +6391,13 @@ namespace DuctApi {
   public partial class ApiEndpoint {
     public ApiEndpoint() {
       this.apiUrl = Dafny.Sequence<Dafny.Rune>.Empty;
-      this.returnType = DuctApi.ReturnType.Default();
-      this.generator = default(DuctApi.IGenerator);
+      this.returnType = DuctTools.ReturnType.Default();
+      this.generator = default(DuctTools.IGenerator);
     }
     public Dafny.ISequence<Dafny.Rune> apiUrl {get; set;}
-    public DuctApi._IReturnType returnType {get; set;}
-    public DuctApi.IGenerator generator {get; set;}
-    public void __ctor(Dafny.ISequence<Dafny.Rune> apiUrl, DuctApi._IReturnType rt, DuctApi.IGenerator generator)
+    public DuctTools._IReturnType returnType {get; set;}
+    public DuctTools.IGenerator generator {get; set;}
+    public void __ctor(Dafny.ISequence<Dafny.Rune> apiUrl, DuctTools._IReturnType rt, DuctTools.IGenerator generator)
     {
       (this).apiUrl = apiUrl;
       (this).returnType = rt;
@@ -6473,16 +6407,16 @@ namespace DuctApi {
 
   public partial class AllApiEndpoints {
     public AllApiEndpoints() {
-      this.endpoints = Dafny.Sequence<DuctApi.ApiEndpoint>.Empty;
+      this.endpoints = Dafny.Sequence<DuctTools.ApiEndpoint>.Empty;
     }
-    public Dafny.ISequence<DuctApi.ApiEndpoint> endpoints {get; set;}
+    public Dafny.ISequence<DuctTools.ApiEndpoint> endpoints {get; set;}
     public void __ctor()
     {
-      (this).endpoints = Dafny.Sequence<DuctApi.ApiEndpoint>.FromElements();
+      (this).endpoints = Dafny.Sequence<DuctTools.ApiEndpoint>.FromElements();
     }
-    public void Add(DuctApi.ApiEndpoint ep)
+    public void Add(DuctTools.ApiEndpoint ep)
     {
-      (this).endpoints = Dafny.Sequence<DuctApi.ApiEndpoint>.Concat(this.endpoints, Dafny.Sequence<DuctApi.ApiEndpoint>.FromElements(ep));
+      (this).endpoints = Dafny.Sequence<DuctTools.ApiEndpoint>.Concat(this.endpoints, Dafny.Sequence<DuctTools.ApiEndpoint>.FromElements(ep));
     }
     public BigInteger Count()
     {
@@ -6490,27 +6424,27 @@ namespace DuctApi {
       n = new BigInteger((this.endpoints).Count);
       return n;
     }
-    public DuctApi.ApiEndpoint Get(BigInteger i)
+    public DuctTools.ApiEndpoint Get(BigInteger i)
     {
-      DuctApi.ApiEndpoint ep = default(DuctApi.ApiEndpoint);
+      DuctTools.ApiEndpoint ep = default(DuctTools.ApiEndpoint);
       ep = (this.endpoints).Select(i);
       return ep;
     }
   }
-} // end of namespace DuctApi
+} // end of namespace DuctTools
 namespace DuctSpecs {
 
 } // end of namespace DuctSpecs
 namespace DuctImpl {
 
 
-  public partial class FormicLandingPage : DuctApi.IGenerator {
+  public partial class FormicLandingPage : DuctTools.IGenerator {
     public FormicLandingPage() {
     }
     public void __ctor()
     {
     }
-    public Dafny.ISequence<Dafny.Rune> Generate(DuctApi._IUserInfo ctx)
+    public Dafny.ISequence<Dafny.Rune> Generate(DuctTools._IUserInfo ctx)
     {
       Dafny.ISequence<Dafny.Rune> html = Dafny.Sequence<Dafny.Rune>.Empty;
       Dafny.ISequence<Dafny.Rune> _0_status;
@@ -6631,6 +6565,33 @@ namespace DuctImpl {
     }
   }
 } // end of namespace DuctImpl
+namespace DuctApis {
+
+
+  public partial class Views {
+    public Views() {
+    }
+    public static DuctTools.AllApiEndpoints Endpoints()
+    {
+      DuctTools.AllApiEndpoints all = default(DuctTools.AllApiEndpoints);
+      DuctTools.AllApiEndpoints _0_catalog;
+      DuctTools.AllApiEndpoints _nw0 = new DuctTools.AllApiEndpoints();
+      _nw0.__ctor();
+      _0_catalog = _nw0;
+      DuctImpl.FormicLandingPage _1_formic__landing;
+      DuctImpl.FormicLandingPage _nw1 = new DuctImpl.FormicLandingPage();
+      _nw1.__ctor();
+      _1_formic__landing = _nw1;
+      DuctTools.ApiEndpoint _2_ep;
+      DuctTools.ApiEndpoint _nw2 = new DuctTools.ApiEndpoint();
+      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(), _1_formic__landing);
+      _2_ep = _nw2;
+      (_0_catalog).Add(_2_ep);
+      all = _0_catalog;
+      return all;
+    }
+  }
+} // end of namespace DuctApis
 namespace _module {
 
 } // end of namespace _module

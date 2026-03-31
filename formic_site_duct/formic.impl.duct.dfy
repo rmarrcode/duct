@@ -128,9 +128,10 @@ module FormicProofHelpers {
   }
 }
 
+
 module DuctImpl {
 
-  import opened DuctApi
+  import opened DuctTools
   import opened DuctSpecs
   import opened SpecsTools
   import FormicProofHelpers

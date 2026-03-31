@@ -3,8 +3,8 @@ using System.Security.Claims;
 using System.Numerics;
 using System.Linq;
 using Dafny;
-using DuctApi;
-using DuctImpl;
+using DuctTools;
+using DuctApis;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -51,32 +51,18 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+// Inspect request, find auth cookie if present -> pipulate httpcontext.user
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Build API endpoints using the modeled classes (matches Demo1.dfy ideas).
-// Endpoints supplied by Dafny (generated from formic.impl.duct.dfy). We only attach handlers here.
-// What is this shit
-AllApiEndpoints catalog = new AllApiEndpoints();
-catalog.__ctor();
-
-FormicLandingPage generator = new FormicLandingPage();
-generator.__ctor();
-
-ApiEndpoint homeEndpoint = new ApiEndpoint();
-homeEndpoint.__ctor(
-    ToDafnyString("/"),
-    ReturnType.create_Content(),
-    generator);
-catalog.Add(homeEndpoint);
-// What is this shit
+// Endpoints supplied by Dafny. The host only attaches handlers.
+AllApiEndpoints catalog = Views.Endpoints();
 
 BigInteger endpointCount = catalog.Count();
 for (int i = 0; i < endpointCount; i++)
 {
     ApiEndpoint ep = catalog.Get(new BigInteger(i));
     string path = FromDafnyString(ep.apiUrl);
-
     app.MapGet(path, (HttpContext context) =>
     {
         _IUserInfo userInfo = ToDafnyUserInfo(context.User);
@@ -109,14 +95,14 @@ app.MapGet("/secure", (ClaimsPrincipal user) =>
 
 app.Run();
 
-static DuctApi._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
-    DuctApi.UserInfo.create_UserInfo(
+static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
+    DuctTools.UserInfo.create_UserInfo(
         ToDafnyString(user?.Identity?.Name ?? "Guest"),
         ToDafnyString(user?.FindFirstValue(ClaimTypes.Email) ?? string.Empty),
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static string RenderHomeHtmlFromGenerator(IGenerator generator, DuctApi._IUserInfo user) =>
+static string RenderHomeHtmlFromGenerator(IGenerator generator, DuctTools._IUserInfo user) =>
     FromDafnyString(generator.Generate(user));
 
 static Dafny.ISequence<Dafny.Rune> ToDafnyString(string text) =>

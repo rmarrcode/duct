@@ -5,11 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$SCRIPT_DIR/converted_duct"
 SRC1="$SCRIPT_DIR/duct.dfy"
 SRC2="$SCRIPT_DIR/formic.impl.duct.dfy"
+SRC3="$SCRIPT_DIR/formic.apis.duct.dfy"
 
 mkdir -p "$OUT_DIR"
 
-echo "Generating C# from $SRC2 (with $SRC1) into $OUT_DIR ..."
-"${DAFNY:-dafny}" translate cs "$SRC2" "$SRC1" \
+echo "Generating C# from $SRC2 and $SRC3 (with $SRC1) into $OUT_DIR ..."
+"${DAFNY:-dafny}" translate cs "$SRC2" "$SRC3" "$SRC1" \
   --no-verify \
   --allow-warnings \
   --include-runtime \
