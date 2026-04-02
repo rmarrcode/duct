@@ -3,7 +3,7 @@ module DuctSpecs {
   import opened DuctTools
   import opened SpecsTools
 
-  ghost predicate LandingPagePre(ctx: UserInfo)
+  predicate LandingPagePre(ctx: UserInfo)
   {
     ctx.name != "" &&
     !Contains(ctx.name, "Signed in") &&
@@ -20,8 +20,10 @@ module DuctSpecs {
     !Contains(ctx.picture, Link("Sign in", "/login"))
   }
 
-  ghost predicate LandingPagePost(ctx: UserInfo, html: string)
+  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType)
   {
+    payload.Content? &&
+    var html := payload.body;
     html != "" &&
     Contains(html, ctx.name) &&
     (ctx.email == "" || Contains(html, ctx.email)) &&
@@ -32,6 +34,24 @@ module DuctSpecs {
     (!ctx.authenticated ==
       (Contains(html, "Anonymous") &&
        Contains(html, Link("Sign in", "/login"))))
+  }
+
+  predicate LoginPost(ctx: UserInfo, payload: ReturnType) 
+  {
+    payload == ReturnType.ChallengeGoogle("/")
+  }
+
+  predicate SecurePost(ctx: UserInfo, payload: ReturnType)
+  {
+    (ctx.authenticated ==>
+      payload.Content? &&
+      Contains(payload.body, ctx.name) && 
+      Contains(payload.body, "You are authenticated")
+    ) &&
+    (!ctx.authenticated ==>
+      payload.Content? &&
+      Contains(payload.body, "You are not authenticated")
+    )
   }
 
 }

@@ -141,12 +141,12 @@ module DuctImpl {
 
     constructor () {}
 
-    ghost predicate PreCondition(u: UserInfo) { LandingPagePre(u) }
-    ghost predicate PostCondition(u: UserInfo, html: string) { LandingPagePost(u, html) }
+    predicate PreCondition(u: UserInfo) { LandingPagePre(u) }
+    predicate PostCondition(u: UserInfo, payload: ReturnType) { LandingPagePost(u, payload) }
 
-    method Generate(ctx: UserInfo) returns (html: string)
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx)
-      ensures PostCondition(ctx, html)
+      ensures PostCondition(ctx, payload)
     {
       var status := if ctx.authenticated then "Signed in" else "Anonymous";
       var action := if ctx.authenticated then Link("Log out", "/logout") else Link("Sign in", "/login");
@@ -171,7 +171,7 @@ module DuctImpl {
         then "<span class=\"meta-value muted\">No profile photo</span>"
         else "<span class=\"meta-value\">Profile image connected</span>";
 
-      html := "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />" +
+      var html := "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />" +
               "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />" +
               "<title>Formic</title>" +
               "<style>" +
@@ -212,7 +212,7 @@ module DuctImpl {
               "<p class=\"eyebrow\">Formic Landing Page</p>" +
               "<h1 class=\"title\">" + ctx.name + "</h1>" +
               "<div class=\"status-badge\"><span class=\"status-dot\"></span>" + status + "</div>" +
-              "<p class=\"lede\">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>" +
+              "<p class=\"lede\">A cleaner generated surface for the formic demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>" +
               "</div></div>" +
               "<div class=\"content\">" +
               "<section class=\"card\">" +
@@ -449,6 +449,73 @@ module DuctImpl {
         assert !ctx.authenticated ==
           (Contains(html, "Anonymous") &&
            Contains(html, Link("Sign in", "/login")));
+      }
+
+      payload := ReturnType.Content(html);
+    }
+  }
+
+  class LoginChallengePage extends IGenerator {
+
+    constructor () {}
+
+    predicate PreCondition(u: UserInfo) { true }
+    predicate PostCondition(u: UserInfo, payload: ReturnType) {
+      LoginPost(u, payload)
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx)
+      ensures PostCondition(ctx, payload)
+    {
+      payload := ReturnType.ChallengeGoogle("/");
+    }
+  }
+
+  class SecurePage extends IGenerator {
+
+    constructor () {}
+
+    predicate PreCondition(u: UserInfo) { true }
+    predicate PostCondition(u: UserInfo, payload: ReturnType) {
+      SecurePost(u, payload)
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx)
+      ensures PostCondition(ctx, payload)
+    {
+      if ctx.authenticated {
+        var logout := Link("Log out", "/logout");
+        var authText := "You are authenticated.";
+        var htmlPrefix := "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />" +
+                          "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />" +
+                          "<title>Secure</title></head><body><h1>Hello, ";
+        var nameSuffix := "!</h1><p>" + authText + "</p><p>" + logout + "</p></body></html>";
+        var html := htmlPrefix + ctx.name + nameSuffix;
+
+        assert html != "";
+        assert html == htmlPrefix + ctx.name + nameSuffix;
+        FormicProofHelpers.ContainsInserted(htmlPrefix, ctx.name, nameSuffix);
+        assert Contains(html, ctx.name);
+
+        var authPrefix := htmlPrefix + ctx.name + "!</h1><p>";
+        var authSuffix := "</p><p>" + logout + "</p></body></html>";
+        assert html == authPrefix + authText + authSuffix;
+        FormicProofHelpers.ContainsInserted(authPrefix, authText, authSuffix);
+        assert Contains(html, authText);
+        assert Contains(html, "You are authenticated.");
+
+        var logoutPrefix := htmlPrefix + ctx.name + "!</h1><p>" + authText + "</p><p>";
+        var logoutSuffix := "</p></body></html>";
+        assert html == logoutPrefix + logout + logoutSuffix;
+        FormicProofHelpers.ContainsInserted(logoutPrefix, logout, logoutSuffix);
+        assert Contains(html, logout);
+        assert Contains(html, Link("Log out", "/logout"));
+
+        payload := ReturnType.Content(html);
+      } else {
+        payload := ReturnType.ChallengeGoogle("/secure");
       }
     }
   }

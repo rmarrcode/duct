@@ -156,21 +156,21 @@ module DuctImpl {
     {
     }
 
-    ghost predicate PreCondition(u: UserInfo)
+    predicate PreCondition(u: UserInfo)
       decreases u
     {
       LandingPagePre(u)
     }
 
-    ghost predicate PostCondition(u: UserInfo, html: string)
-      decreases u, html
+    predicate PostCondition(u: UserInfo, payload: ReturnType)
+      decreases u, payload
     {
-      LandingPagePost(u, html)
+      LandingPagePost(u, payload)
     }
 
-    method Generate(ctx: UserInfo) returns (html: string)
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx)
-      ensures PostCondition(ctx, html)
+      ensures PostCondition(ctx, payload)
       decreases ctx
     {
       var status := if ctx.authenticated then ""Signed in"" else ""Anonymous"";
@@ -189,7 +189,7 @@ module DuctImpl {
       var picturePanel := if ctx.picture == """" then ""<div class=\""avatar avatar-fallback\"">F</div>"" else ""<div class=\""avatar\""><img src=\"""" + ctx.picture + ""\"" alt=\"""" + ctx.name + ""\"" /></div>"";
       var emailPanel := if ctx.email == """" then ""<span class=\""meta-value muted\"">No email linked</span>"" else ""<span class=\""meta-value\"">"" + ctx.email + ""</span>"";
       var pictureMeta := if ctx.picture == """" then ""<span class=\""meta-value muted\"">No profile photo</span>"" else ""<span class=\""meta-value\"">Profile image connected</span>"";
-      html := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}"" + ""body:before{content:\""\"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}"" + "".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}"" + "".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}"" + "".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}"" + "".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}"" + "".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}"" + "".actions a:hover{transform:translateY(-1px);}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}"" + ""</style></head><body>"" + ""<!-- proof:"" + tail5 + "" -->"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + picturePanel + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + emailPanel + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + pictureMeta + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>"" + ""</aside>"" + ""</div></section></main></body></html>"";
+      var html := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}"" + ""body:before{content:\""\"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}"" + "".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}"" + "".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}"" + "".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}"" + "".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}"" + "".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}"" + "".actions a:hover{transform:translateY(-1px);}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}"" + ""</style></head><body>"" + ""<!-- proof:"" + tail5 + "" -->"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + picturePanel + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + emailPanel + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + pictureMeta + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>"" + ""</aside>"" + ""</div></section></main></body></html>"";
       assert html != """";
       assert html == ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
       var statusPrefix := ""<html>|status|"";
@@ -376,6 +376,84 @@ module DuctImpl {
         assert ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
         assert !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
       }
+      payload := ReturnType.Content(html);
+    }
+  }
+
+  class LoginChallengePage extends IGenerator {
+    constructor ()
+    {
+    }
+
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    predicate PostCondition(u: UserInfo, payload: ReturnType)
+      decreases u, payload
+    {
+      LoginPost(u, payload)
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx)
+      ensures PostCondition(ctx, payload)
+      decreases ctx
+    {
+      payload := ReturnType.ChallengeGoogle(""/"");
+    }
+  }
+
+  class SecurePage extends IGenerator {
+    constructor ()
+    {
+    }
+
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    predicate PostCondition(u: UserInfo, payload: ReturnType)
+      decreases u, payload
+    {
+      SecurePost(u, payload)
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx)
+      ensures PostCondition(ctx, payload)
+      decreases ctx
+    {
+      if ctx.authenticated {
+        var logout := Link(""Log out"", ""/logout"");
+        var authText := ""You are authenticated."";
+        var htmlPrefix := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Secure</title></head><body><h1>Hello, "";
+        var nameSuffix := ""!</h1><p>"" + authText + ""</p><p>"" + logout + ""</p></body></html>"";
+        var html := htmlPrefix + ctx.name + nameSuffix;
+        assert html != """";
+        assert html == htmlPrefix + ctx.name + nameSuffix;
+        FormicProofHelpers.ContainsInserted(htmlPrefix, ctx.name, nameSuffix);
+        assert Contains(html, ctx.name);
+        var authPrefix := htmlPrefix + ctx.name + ""!</h1><p>"";
+        var authSuffix := ""</p><p>"" + logout + ""</p></body></html>"";
+        assert html == authPrefix + authText + authSuffix;
+        FormicProofHelpers.ContainsInserted(authPrefix, authText, authSuffix);
+        assert Contains(html, authText);
+        assert Contains(html, ""You are authenticated."");
+        var logoutPrefix := htmlPrefix + ctx.name + ""!</h1><p>"" + authText + ""</p><p>"";
+        var logoutSuffix := ""</p></body></html>"";
+        assert html == logoutPrefix + logout + logoutSuffix;
+        FormicProofHelpers.ContainsInserted(logoutPrefix, logout, logoutSuffix);
+        assert Contains(html, logout);
+        assert Contains(html, Link(""Log out"", ""/logout""));
+        payload := ReturnType.Content(html);
+      } else {
+        payload := ReturnType.ChallengeGoogle(""/secure"");
+      }
     }
   }
 }
@@ -387,32 +465,37 @@ module DuctApis {
   import opened DuctTools
   class Views {
     static method Endpoints() returns (all: AllApiEndpoints)
-      ensures |all.endpoints| == 1
     {
       var catalog := new AllApiEndpoints();
       var formic_landing := new FormicLandingPage();
-      var ep := new ApiEndpoint(""/"", ReturnType.Content, formic_landing);
-      catalog.Add(ep);
+      var home := new ApiEndpoint(""/"", ReturnType.Content(""""), formic_landing);
+      catalog.Add(home);
+      var login_page := new LoginChallengePage();
+      var login := new ApiEndpoint(""/login"", ReturnType.ChallengeGoogle(""/""), login_page);
+      catalog.Add(login);
+      var secure_page := new SecurePage();
+      var secure := new ApiEndpoint(""/secure"", ReturnType.Content(""""), secure_page);
+      catalog.Add(secure);
       all := catalog;
     }
   }
 }
 
 module DuctTools {
-  datatype ReturnType = Content | Redirect
+  datatype ReturnType = Content(body: string) | ChallengeGoogle(returnUrl: string) | Redirect
 
   datatype UserInfo = UserInfo(name: string, email: string, picture: string, authenticated: bool)
 
   trait {:termination false} IGenerator {
-    ghost predicate PreCondition(u: UserInfo)
+    predicate PreCondition(u: UserInfo)
       decreases u
 
-    ghost predicate PostCondition(u: UserInfo, html: string)
-      decreases u, html
+    predicate PostCondition(u: UserInfo, payload: ReturnType)
+      decreases u, payload
 
-    method Generate(user: UserInfo) returns (content: string)
+    method Generate(user: UserInfo) returns (payload: ReturnType)
       requires PreCondition(user)
-      ensures PostCondition(user, content)
+      ensures PostCondition(user, payload)
       decreases user
   }
 
@@ -424,7 +507,6 @@ module DuctTools {
     constructor (apiUrl: string, rt: ReturnType, generator: IGenerator)
       requires apiUrl != """"
       requires apiUrl[0] == '/'
-      requires generator != null
       ensures this.apiUrl == apiUrl
       ensures this.returnType == rt
       ensures this.generator == generator
@@ -446,7 +528,6 @@ module DuctTools {
     }
 
     method Add(ep: ApiEndpoint)
-      requires ep != null
       modifies this
       ensures endpoints == old(endpoints) + [ep]
       decreases ep
@@ -490,7 +571,7 @@ module SpecsTools {
 }
 
 module DuctSpecs {
-  ghost predicate LandingPagePre(ctx: UserInfo)
+  predicate LandingPagePre(ctx: UserInfo)
     decreases ctx
   {
     ctx.name != """" &&
@@ -508,15 +589,29 @@ module DuctSpecs {
     !Contains(ctx.picture, Link(""Sign in"", ""/login""))
   }
 
-  ghost predicate LandingPagePost(ctx: UserInfo, html: string)
-    decreases ctx, html
+  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType)
+    decreases ctx, payload
   {
-    html != """" &&
-    Contains(html, ctx.name) &&
-    (ctx.email == """" || Contains(html, ctx.email)) &&
-    (ctx.picture == """" || Contains(html, ctx.picture)) &&
-    ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) &&
-    !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
+    payload.Content? &&
+    var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
+  }
+
+  predicate LoginPost(ctx: UserInfo, payload: ReturnType)
+    decreases ctx, payload
+  {
+    payload == ReturnType.ChallengeGoogle(""/"")
+  }
+
+  predicate SecurePost(ctx: UserInfo, payload: ReturnType)
+    decreases ctx, payload
+  {
+    (ctx.authenticated ==>
+      payload.Content? &&
+      Contains(payload.body, ctx.name) &&
+      Contains(payload.body, ""You are authenticated"")) &&
+    (!ctx.authenticated ==>
+      payload.Content? &&
+      Contains(payload.body, ""You are not authenticated""))
   }
 
   import opened DuctTools
@@ -6223,13 +6318,16 @@ namespace DuctTools {
 
   public interface _IReturnType {
     bool is_Content { get; }
+    bool is_ChallengeGoogle { get; }
     bool is_Redirect { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_body { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_returnUrl { get; }
     _IReturnType DowncastClone();
   }
   public abstract class ReturnType : _IReturnType {
     public ReturnType() {
     }
-    private static readonly DuctTools._IReturnType theDefault = create_Content();
+    private static readonly DuctTools._IReturnType theDefault = create_Content(Dafny.Sequence<Dafny.Rune>.Empty);
     public static DuctTools._IReturnType Default() {
       return theDefault;
     }
@@ -6237,40 +6335,83 @@ namespace DuctTools {
     public static Dafny.TypeDescriptor<DuctTools._IReturnType> _TypeDescriptor() {
       return _TYPE;
     }
-    public static _IReturnType create_Content() {
-      return new ReturnType_Content();
+    public static _IReturnType create_Content(Dafny.ISequence<Dafny.Rune> body) {
+      return new ReturnType_Content(body);
+    }
+    public static _IReturnType create_ChallengeGoogle(Dafny.ISequence<Dafny.Rune> returnUrl) {
+      return new ReturnType_ChallengeGoogle(returnUrl);
     }
     public static _IReturnType create_Redirect() {
       return new ReturnType_Redirect();
     }
     public bool is_Content { get { return this is ReturnType_Content; } }
+    public bool is_ChallengeGoogle { get { return this is ReturnType_ChallengeGoogle; } }
     public bool is_Redirect { get { return this is ReturnType_Redirect; } }
-    public static System.Collections.Generic.IEnumerable<_IReturnType> AllSingletonConstructors {
+    public Dafny.ISequence<Dafny.Rune> dtor_body {
       get {
-        yield return ReturnType.create_Content();
-        yield return ReturnType.create_Redirect();
+        var d = this;
+        return ((ReturnType_Content)d)._body;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_returnUrl {
+      get {
+        var d = this;
+        return ((ReturnType_ChallengeGoogle)d)._returnUrl;
       }
     }
     public abstract _IReturnType DowncastClone();
   }
   public class ReturnType_Content : ReturnType {
-    public ReturnType_Content() : base() {
+    public readonly Dafny.ISequence<Dafny.Rune> _body;
+    public ReturnType_Content(Dafny.ISequence<Dafny.Rune> body) : base() {
+      this._body = body;
     }
     public override _IReturnType DowncastClone() {
       if (this is _IReturnType dt) { return dt; }
-      return new ReturnType_Content();
+      return new ReturnType_Content(_body);
     }
     public override bool Equals(object other) {
       var oth = other as DuctTools.ReturnType_Content;
-      return oth != null;
+      return oth != null && object.Equals(this._body, oth._body);
     }
     public override int GetHashCode() {
       ulong hash = 5381;
       hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._body));
       return (int) hash;
     }
     public override string ToString() {
       string s = "DuctTools.ReturnType.Content";
+      s += "(";
+      s += this._body.ToVerbatimString(true);
+      s += ")";
+      return s;
+    }
+  }
+  public class ReturnType_ChallengeGoogle : ReturnType {
+    public readonly Dafny.ISequence<Dafny.Rune> _returnUrl;
+    public ReturnType_ChallengeGoogle(Dafny.ISequence<Dafny.Rune> returnUrl) : base() {
+      this._returnUrl = returnUrl;
+    }
+    public override _IReturnType DowncastClone() {
+      if (this is _IReturnType dt) { return dt; }
+      return new ReturnType_ChallengeGoogle(_returnUrl);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DuctTools.ReturnType_ChallengeGoogle;
+      return oth != null && object.Equals(this._returnUrl, oth._returnUrl);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._returnUrl));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DuctTools.ReturnType.ChallengeGoogle";
+      s += "(";
+      s += this._returnUrl.ToVerbatimString(true);
+      s += ")";
       return s;
     }
   }
@@ -6287,7 +6428,7 @@ namespace DuctTools {
     }
     public override int GetHashCode() {
       ulong hash = 5381;
-      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + 2;
       return (int) hash;
     }
     public override string ToString() {
@@ -6383,7 +6524,9 @@ namespace DuctTools {
   }
 
   public interface IGenerator {
-    Dafny.ISequence<Dafny.Rune> Generate(DuctTools._IUserInfo user);
+    bool PreCondition(DuctTools._IUserInfo u);
+    bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload);
+    DuctTools._IReturnType Generate(DuctTools._IUserInfo user);
   }
   public class _Companion_IGenerator {
   }
@@ -6434,6 +6577,30 @@ namespace DuctTools {
 } // end of namespace DuctTools
 namespace DuctSpecs {
 
+  public partial class __default {
+    public static bool LandingPagePre(DuctTools._IUserInfo ctx) {
+      return ((((((((((((!((ctx).dtor_name).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))));
+    }
+    public static bool LandingPagePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload)
+    {
+      var _pat_let_tv0 = ctx;
+      var _pat_let_tv1 = ctx;
+      var _pat_let_tv2 = ctx;
+      var _pat_let_tv3 = ctx;
+      var _pat_let_tv4 = ctx;
+      var _pat_let_tv5 = ctx;
+      var _pat_let_tv6 = ctx;
+      return ((payload).is_Content) && (Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>((payload).dtor_body, _pat_let0_0 => Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>(_pat_let0_0, _0_html => (((((!(_0_html).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (SpecsTools.__default.Contains(_0_html, (_pat_let_tv0).dtor_name))) && ((((_pat_let_tv1).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv2).dtor_email)))) && ((((_pat_let_tv3).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv4).dtor_picture)))) && (((_pat_let_tv5).dtor_authenticated) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"))))))) && ((!((_pat_let_tv6).dtor_authenticated)) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))))));
+    }
+    public static bool LoginPost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload)
+    {
+      return object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")));
+    }
+    public static bool SecurePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload)
+    {
+      return (!((ctx).dtor_authenticated) || ((((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, (ctx).dtor_name))) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated"))))) && (!(!((ctx).dtor_authenticated)) || (((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are not authenticated")))));
+    }
+  }
 } // end of namespace DuctSpecs
 namespace DuctImpl {
 
@@ -6444,9 +6611,16 @@ namespace DuctImpl {
     public void __ctor()
     {
     }
-    public Dafny.ISequence<Dafny.Rune> Generate(DuctTools._IUserInfo ctx)
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs.__default.LandingPagePre(u);
+    }
+    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
     {
-      Dafny.ISequence<Dafny.Rune> html = Dafny.Sequence<Dafny.Rune>.Empty;
+      return DuctSpecs.__default.LandingPagePost(u, payload);
+    }
+    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
+    {
+      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
       Dafny.ISequence<Dafny.Rune> _0_status;
       if ((ctx).dtor_authenticated) {
         _0_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in");
@@ -6499,69 +6673,135 @@ namespace DuctImpl {
       } else {
         _15_pictureMeta = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">Profile image connected</span>");
       }
-      html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a:hover{transform:translateY(-1px);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!-- proof:")), _12_tail5), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" -->")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), _13_picturePanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), _14_emailPanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), _15_pictureMeta), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
-      Dafny.ISequence<Dafny.Rune> _16_statusPrefix;
-      _16_statusPrefix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|status|");
-      Dafny.ISequence<Dafny.Rune> _17_statusSuffix;
-      _17_statusSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _18_statusHaystack;
-      _18_statusHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_16_statusPrefix, _0_status), _17_statusSuffix);
-      Dafny.ISequence<Dafny.Rune> _19_namePrefix;
-      _19_namePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|user|"));
-      Dafny.ISequence<Dafny.Rune> _20_nameSuffix;
-      _20_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _21_nameHaystack;
-      _21_nameHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_19_namePrefix, (ctx).dtor_name), _20_nameSuffix);
-      Dafny.ISequence<Dafny.Rune> _22_actionPrefix;
-      _22_actionPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|action|"));
-      Dafny.ISequence<Dafny.Rune> _23_actionSuffix;
-      _23_actionSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _24_actionHaystack;
-      _24_actionHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_22_actionPrefix, _1_action), _23_actionSuffix);
+      Dafny.ISequence<Dafny.Rune> _16_html;
+      _16_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a:hover{transform:translateY(-1px);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!-- proof:")), _12_tail5), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" -->")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), _13_picturePanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), _14_emailPanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), _15_pictureMeta), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
+      Dafny.ISequence<Dafny.Rune> _17_statusPrefix;
+      _17_statusPrefix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|status|");
+      Dafny.ISequence<Dafny.Rune> _18_statusSuffix;
+      _18_statusSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _19_statusHaystack;
+      _19_statusHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_17_statusPrefix, _0_status), _18_statusSuffix);
+      Dafny.ISequence<Dafny.Rune> _20_namePrefix;
+      _20_namePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|user|"));
+      Dafny.ISequence<Dafny.Rune> _21_nameSuffix;
+      _21_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _22_nameHaystack;
+      _22_nameHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_20_namePrefix, (ctx).dtor_name), _21_nameSuffix);
+      Dafny.ISequence<Dafny.Rune> _23_actionPrefix;
+      _23_actionPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|action|"));
+      Dafny.ISequence<Dafny.Rune> _24_actionSuffix;
+      _24_actionSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _7_closingPiece);
+      Dafny.ISequence<Dafny.Rune> _25_actionHaystack;
+      _25_actionHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_23_actionPrefix, _1_action), _24_actionSuffix);
       if (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        Dafny.ISequence<Dafny.Rune> _25_emailPrefix;
-        _25_emailPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|email|"));
-        Dafny.ISequence<Dafny.Rune> _26_emailSuffix;
-        _26_emailSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-        Dafny.ISequence<Dafny.Rune> _27_emailHaystack;
-        _27_emailHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_25_emailPrefix, (ctx).dtor_email), _26_emailSuffix);
+        Dafny.ISequence<Dafny.Rune> _26_emailPrefix;
+        _26_emailPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|email|"));
+        Dafny.ISequence<Dafny.Rune> _27_emailSuffix;
+        _27_emailSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+        Dafny.ISequence<Dafny.Rune> _28_emailHaystack;
+        _28_emailHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_26_emailPrefix, (ctx).dtor_email), _27_emailSuffix);
       }
       if (!((ctx).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        Dafny.ISequence<Dafny.Rune> _28_picturePrefix;
-        _28_picturePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|picture|"));
-        Dafny.ISequence<Dafny.Rune> _29_pictureSuffix;
-        _29_pictureSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-        Dafny.ISequence<Dafny.Rune> _30_pictureHaystack;
-        _30_pictureHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_28_picturePrefix, (ctx).dtor_picture), _29_pictureSuffix);
+        Dafny.ISequence<Dafny.Rune> _29_picturePrefix;
+        _29_picturePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|picture|"));
+        Dafny.ISequence<Dafny.Rune> _30_pictureSuffix;
+        _30_pictureSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
+        Dafny.ISequence<Dafny.Rune> _31_pictureHaystack;
+        _31_pictureHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_29_picturePrefix, (ctx).dtor_picture), _30_pictureSuffix);
       }
       if ((ctx).dtor_authenticated) {
-        Dafny.ISequence<Dafny.Rune> _31_missingAction;
-        _31_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
-        Dafny.ISequence<Dafny.Rune> _32_userMissingHaystack;
-        _32_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
-        Dafny.ISequence<Dafny.Rune> _33_emailMissingHaystack;
-        _33_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
-        Dafny.ISequence<Dafny.Rune> _34_pictureMissingHaystack;
-        _34_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
-        Dafny.ISequence<Dafny.Rune> _35_actionMissingHaystack;
-        _35_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
-        Dafny.ISequence<Dafny.Rune> _36_htmlMissingHaystack;
-        _36_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
+        Dafny.ISequence<Dafny.Rune> _32_missingAction;
+        _32_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
+        Dafny.ISequence<Dafny.Rune> _33_userMissingHaystack;
+        _33_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
+        Dafny.ISequence<Dafny.Rune> _34_emailMissingHaystack;
+        _34_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
+        Dafny.ISequence<Dafny.Rune> _35_pictureMissingHaystack;
+        _35_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
+        Dafny.ISequence<Dafny.Rune> _36_actionMissingHaystack;
+        _36_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
+        Dafny.ISequence<Dafny.Rune> _37_htmlMissingHaystack;
+        _37_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
       } else {
-        Dafny.ISequence<Dafny.Rune> _37_missingAction;
-        _37_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
-        Dafny.ISequence<Dafny.Rune> _38_userMissingHaystack;
-        _38_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
-        Dafny.ISequence<Dafny.Rune> _39_emailMissingHaystack;
-        _39_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
-        Dafny.ISequence<Dafny.Rune> _40_pictureMissingHaystack;
-        _40_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
-        Dafny.ISequence<Dafny.Rune> _41_actionMissingHaystack;
-        _41_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
-        Dafny.ISequence<Dafny.Rune> _42_htmlMissingHaystack;
-        _42_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
+        Dafny.ISequence<Dafny.Rune> _38_missingAction;
+        _38_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+        Dafny.ISequence<Dafny.Rune> _39_userMissingHaystack;
+        _39_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
+        Dafny.ISequence<Dafny.Rune> _40_emailMissingHaystack;
+        _40_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
+        Dafny.ISequence<Dafny.Rune> _41_pictureMissingHaystack;
+        _41_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
+        Dafny.ISequence<Dafny.Rune> _42_actionMissingHaystack;
+        _42_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
+        Dafny.ISequence<Dafny.Rune> _43_htmlMissingHaystack;
+        _43_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
       }
-      return html;
+      payload = DuctTools.ReturnType.create_Content(_16_html);
+      return payload;
+    }
+  }
+
+  public partial class LoginChallengePage : DuctTools.IGenerator {
+    public LoginChallengePage() {
+    }
+    public void __ctor()
+    {
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return true;
+    }
+    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
+    {
+      return DuctSpecs.__default.LoginPost(u, payload);
+    }
+    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
+    {
+      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
+      payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"));
+      return payload;
+    }
+  }
+
+  public partial class SecurePage : DuctTools.IGenerator {
+    public SecurePage() {
+    }
+    public void __ctor()
+    {
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return true;
+    }
+    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
+    {
+      return DuctSpecs.__default.SecurePost(u, payload);
+    }
+    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
+    {
+      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
+      if ((ctx).dtor_authenticated) {
+        Dafny.ISequence<Dafny.Rune> _0_logout;
+        _0_logout = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+        Dafny.ISequence<Dafny.Rune> _1_authText;
+        _1_authText = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated.");
+        Dafny.ISequence<Dafny.Rune> _2_htmlPrefix;
+        _2_htmlPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Secure</title></head><body><h1>Hello, "));
+        Dafny.ISequence<Dafny.Rune> _3_nameSuffix;
+        _3_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>"), _1_authText), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>")), _0_logout), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>"));
+        Dafny.ISequence<Dafny.Rune> _4_html;
+        _4_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), _3_nameSuffix);
+        Dafny.ISequence<Dafny.Rune> _5_authPrefix;
+        _5_authPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>"));
+        Dafny.ISequence<Dafny.Rune> _6_authSuffix;
+        _6_authSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>"), _0_logout), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>"));
+        Dafny.ISequence<Dafny.Rune> _7_logoutPrefix;
+        _7_logoutPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>")), _1_authText), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>"));
+        Dafny.ISequence<Dafny.Rune> _8_logoutSuffix;
+        _8_logoutSuffix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>");
+        payload = DuctTools.ReturnType.create_Content(_4_html);
+      } else {
+        payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"));
+      }
+      return payload;
     }
   }
 } // end of namespace DuctImpl
@@ -6582,11 +6822,29 @@ namespace DuctApis {
       DuctImpl.FormicLandingPage _nw1 = new DuctImpl.FormicLandingPage();
       _nw1.__ctor();
       _1_formic__landing = _nw1;
-      DuctTools.ApiEndpoint _2_ep;
+      DuctTools.ApiEndpoint _2_home;
       DuctTools.ApiEndpoint _nw2 = new DuctTools.ApiEndpoint();
-      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(), _1_formic__landing);
-      _2_ep = _nw2;
-      (_0_catalog).Add(_2_ep);
+      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _1_formic__landing);
+      _2_home = _nw2;
+      (_0_catalog).Add(_2_home);
+      DuctImpl.LoginChallengePage _3_login__page;
+      DuctImpl.LoginChallengePage _nw3 = new DuctImpl.LoginChallengePage();
+      _nw3.__ctor();
+      _3_login__page = _nw3;
+      DuctTools.ApiEndpoint _4_login;
+      DuctTools.ApiEndpoint _nw4 = new DuctTools.ApiEndpoint();
+      _nw4.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")), _3_login__page);
+      _4_login = _nw4;
+      (_0_catalog).Add(_4_login);
+      DuctImpl.SecurePage _5_secure__page;
+      DuctImpl.SecurePage _nw5 = new DuctImpl.SecurePage();
+      _nw5.__ctor();
+      _5_secure__page = _nw5;
+      DuctTools.ApiEndpoint _6_secure;
+      DuctTools.ApiEndpoint _nw6 = new DuctTools.ApiEndpoint();
+      _nw6.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _5_secure__page);
+      _6_secure = _nw6;
+      (_0_catalog).Add(_6_secure);
       all = _0_catalog;
       return all;
     }

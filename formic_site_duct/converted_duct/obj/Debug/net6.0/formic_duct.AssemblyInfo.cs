@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("formic_duct")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f7593c4e1821e63f491e903d298b78255c0dc3ab")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fb3575c6651becf15b8982fafa1d0bc40f39ba0b")]
 [assembly: System.Reflection.AssemblyProductAttribute("formic_duct")]
 [assembly: System.Reflection.AssemblyTitleAttribute("formic_duct")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

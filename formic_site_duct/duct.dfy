@@ -1,6 +1,9 @@
 module DuctTools {
 
-  datatype ReturnType = Content | Redirect
+  datatype ReturnType = 
+    Content(body: string)
+  | ChallengeGoogle(returnUrl: string)
+  | Redirect
 
   datatype UserInfo = UserInfo(
     name: string,
@@ -10,24 +13,23 @@ module DuctTools {
 
   trait {:termination false} IGenerator {
 
-    ghost predicate PreCondition(u: UserInfo)
-    ghost predicate PostCondition(u: UserInfo, html: string)
+    predicate PreCondition(u: UserInfo)
+    predicate PostCondition(u: UserInfo, payload: ReturnType)
 
-    method Generate(user: UserInfo) returns (content: string)
+    method Generate(user: UserInfo) returns (payload: ReturnType)
       requires PreCondition(user)
-      ensures PostCondition(user, content)
+      ensures PostCondition(user, payload)
   }
 
   class ApiEndpoint {
     
-    var apiUrl: string;
-    var returnType: ReturnType;
-    var generator: IGenerator;
+    var apiUrl: string
+    var returnType: ReturnType
+    var generator: IGenerator
 
     constructor(apiUrl: string, rt: ReturnType, generator: IGenerator)
       requires apiUrl != ""
       requires apiUrl[0] == '/' // simple invariant: path-like
-      requires generator != null
       ensures this.apiUrl == apiUrl
       ensures this.returnType == rt
       ensures this.generator == generator
@@ -49,7 +51,6 @@ module DuctTools {
     }
 
     method Add(ep: ApiEndpoint)
-      requires ep != null
       modifies this
       ensures endpoints == old(endpoints) + [ep]
     {
