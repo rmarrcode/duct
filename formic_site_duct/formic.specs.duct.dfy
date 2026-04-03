@@ -55,3 +55,6 @@ module DuctSpecs {
   }
 
 }
+
+
+dotnet add formic_site_cs/FormicSite.csproj package Microsoft.EntityFrameworkCore.Sqlite
