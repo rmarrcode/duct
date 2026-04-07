@@ -1,15 +1,15 @@
 module DuctTools {
 
-  datatype ReturnType = 
-    Content(body: string)
-  | ChallengeGoogle(returnUrl: string)
-  | Redirect
-
   datatype UserInfo = UserInfo(
     name: string,
     email: string,
     picture: string,
     authenticated: bool)
+
+  datatype ReturnType = 
+    Content(body: string)
+  | ChallengeGoogle(returnUrl: string)
+  | Redirect
 
   trait {:termination false} IGenerator {
 

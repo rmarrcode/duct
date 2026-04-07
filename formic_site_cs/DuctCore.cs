@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Claims;
 using System.Numerics;
 using System.Linq;
@@ -28,8 +27,10 @@ builder.Services
     {
         options.LoginPath = "/login";
         options.LogoutPath = "/logout";
-        options.Cookie.SameSite = SameSiteMode.Lax; // works with external redirects on localhost
-        options.Cookie.SecurePolicy = CookieSecurePolicy.None; // allow http during local dev
+        //options.Cookie.SameSite = SameSiteMode.Lax; // works with external redirects on localhost
+        //options.Cookie.SecurePolicy = CookieSecurePolicy.None; // allow http during local dev
+        options.Cookie.Path = "/";
+        options.Cookie.Name = "formic.auth";
     })
     .AddGoogle(options =>
     {
@@ -66,32 +67,16 @@ for (int i = 0; i < endpointCount; i++)
     app.MapGet(path, (HttpContext context) =>
     {
         _IUserInfo userInfo = ToDafnyUserInfo(context.User);
-        if (ep.returnType.is_Content)
-        {
-            string html = RenderHomeHtmlFromGenerator(ep.generator, userInfo);
-            return Results.Content(html, "text/html");
-        }
-        return Results.StatusCode(StatusCodes.Status501NotImplemented);
+        return RenderResponse(ep.generator, userInfo);
     });
 }
 
-app.MapGet("/login", (string? returnUrl) =>
-{
-    AuthenticationProperties props = new AuthenticationProperties { RedirectUri = returnUrl ?? "/" };
-    return Results.Challenge(props, new[] { GoogleDefaults.AuthenticationScheme });
-});
-
+// TODO: need to decide what 'base truth' is
 app.MapGet("/logout", async (HttpContext context) =>
 {
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/");
 });
-
-app.MapGet("/secure", (ClaimsPrincipal user) =>
-{
-    string name = user.Identity?.Name ?? "unknown";
-    return Results.Json(new { message = $"Hello, {name}!", issued = DateTimeOffset.UtcNow });
-}).RequireAuthorization();
 
 app.Run();
 
@@ -102,8 +87,27 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static string RenderHomeHtmlFromGenerator(IGenerator generator, DuctTools._IUserInfo user) =>
-    FromDafnyString(generator.Generate(user));
+static IResult RenderResponse(IGenerator generator, DuctTools._IUserInfo user)
+{
+    _IReturnType payload = generator.Generate(user);
+
+    if (payload.is_Content)
+    {
+        string html = FromDafnyString(payload.dtor_body);
+        return Results.Content(html, "text/html");
+    }
+
+    if (payload.is_ChallengeGoogle)
+    {
+        AuthenticationProperties props = new AuthenticationProperties
+        {
+            RedirectUri = FromDafnyString(payload.dtor_returnUrl)
+        };
+        return Results.Challenge(props, new[] { GoogleDefaults.AuthenticationScheme });
+    }
+
+    return Results.StatusCode(StatusCodes.Status501NotImplemented);
+}
 
 static Dafny.ISequence<Dafny.Rune> ToDafnyString(string text) =>
     Dafny.Sequence<Dafny.Rune>.UnicodeFromString(text ?? string.Empty);
