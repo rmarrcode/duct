@@ -4,6 +4,8 @@ dafny_version = "4.9.0.0"
 legacy-module-names = false
 [options_by_module.FormicProofHelpers]
 legacy-module-names = false
+[options_by_module.DB]
+legacy-module-names = false
 [options_by_module.DuctTools]
 legacy-module-names = false
 [options_by_module.DuctSpecs]

@@ -1,5 +1,7 @@
 module DuctTools {
 
+  import opened DB
+
   datatype UserInfo = UserInfo(
     name: string,
     email: string,
@@ -12,17 +14,26 @@ module DuctTools {
   | Redirect
 
   trait {:termination false} IGenerator {
+    var db: Database?
 
-    predicate PreCondition(u: UserInfo)
-    predicate PostCondition(u: UserInfo, payload: ReturnType)
+    method SetDb(db: Database)
+      modifies this
+      ensures this.db == db
+    {
+      this.db := db;
+    }
+
+    predicate PreCondition(u: UserInfo, db: Database?)
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
 
     method Generate(user: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(user)
-      ensures PostCondition(user, payload)
+      requires PreCondition(user, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(user, payload, db)
   }
 
   class ApiEndpoint {
-    
     var apiUrl: string
     var returnType: ReturnType
     var generator: IGenerator

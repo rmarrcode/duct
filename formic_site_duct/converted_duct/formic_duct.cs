@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs formic_site_duct/formic.impl.duct.dfy formic_site_duct/formic.apis.duct.dfy formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
@@ -144,6 +144,8 @@ module FormicProofHelpers {
 
 module DuctImpl {
 
+  import opened DB
+
   import opened DuctTools
 
   import opened DuctSpecs
@@ -156,21 +158,23 @@ module DuctImpl {
     {
     }
 
-    predicate PreCondition(u: UserInfo)
-      decreases u
+    predicate PreCondition(u: UserInfo, db: Database?)
+      decreases u, db
     {
       LandingPagePre(u)
     }
 
-    predicate PostCondition(u: UserInfo, payload: ReturnType)
-      decreases u, payload
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+      decreases if db == null then {} else {db}, u, payload, db
     {
       LandingPagePost(u, payload)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
       decreases ctx
     {
       var status := if ctx.authenticated then ""Signed in"" else ""Anonymous"";
@@ -189,7 +193,7 @@ module DuctImpl {
       var picturePanel := if ctx.picture == """" then ""<div class=\""avatar avatar-fallback\"">F</div>"" else ""<div class=\""avatar\""><img src=\"""" + ctx.picture + ""\"" alt=\"""" + ctx.name + ""\"" /></div>"";
       var emailPanel := if ctx.email == """" then ""<span class=\""meta-value muted\"">No email linked</span>"" else ""<span class=\""meta-value\"">"" + ctx.email + ""</span>"";
       var pictureMeta := if ctx.picture == """" then ""<span class=\""meta-value muted\"">No profile photo</span>"" else ""<span class=\""meta-value\"">Profile image connected</span>"";
-      var html := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}"" + ""body:before{content:\""\"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}"" + "".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}"" + "".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}"" + "".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}"" + "".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}"" + "".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}"" + "".actions a:hover{transform:translateY(-1px);}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}"" + ""</style></head><body>"" + ""<!-- proof:"" + tail5 + "" -->"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + picturePanel + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + emailPanel + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + pictureMeta + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>"" + ""</aside>"" + ""</div></section></main></body></html>"";
+      var html := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}"" + ""body:before{content:\""\"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}"" + "".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}"" + "".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}"" + "".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}"" + "".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}"" + "".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}"" + "".actions a:hover{transform:translateY(-1px);}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}"" + ""</style></head><body>"" + ""<!-- proof:"" + tail5 + "" -->"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + picturePanel + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A cleaner generated surface for the formic demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + emailPanel + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + pictureMeta + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>"" + ""</aside>"" + ""</div></section></main></body></html>"";
       assert html != """";
       assert html == ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
       var statusPrefix := ""<html>|status|"";
@@ -385,21 +389,23 @@ module DuctImpl {
     {
     }
 
-    predicate PreCondition(u: UserInfo)
-      decreases u
+    predicate PreCondition(u: UserInfo, db: Database?)
+      decreases u, db
     {
       true
     }
 
-    predicate PostCondition(u: UserInfo, payload: ReturnType)
-      decreases u, payload
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+      decreases if db == null then {} else {db}, u, payload, db
     {
       LoginPost(u, payload)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
       decreases ctx
     {
       payload := ReturnType.ChallengeGoogle(""/"");
@@ -411,21 +417,23 @@ module DuctImpl {
     {
     }
 
-    predicate PreCondition(u: UserInfo)
-      decreases u
+    predicate PreCondition(u: UserInfo, db: Database?)
+      decreases u, db
     {
       true
     }
 
-    predicate PostCondition(u: UserInfo, payload: ReturnType)
-      decreases u, payload
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+      decreases if db == null then {} else {db}, u, payload, db
     {
       SecurePost(u, payload)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
       decreases ctx
     {
       if ctx.authenticated {
@@ -456,9 +464,57 @@ module DuctImpl {
       }
     }
   }
+
+  class SaveUserPage extends IGenerator {
+    constructor ()
+    {
+    }
+
+    predicate PreCondition(u: UserInfo, db: Database?)
+      decreases u, db
+    {
+      !(u.authenticated && u.email != """") || db != null
+    }
+
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+      decreases if db == null then {} else {db}, u, payload, db
+    {
+      SaveUserPost(u, payload, db)
+    }
+
+    method AddPersistedUser(ctx: UserInfo)
+      requires ctx.authenticated
+      requires ctx.email != """"
+      requires db != null
+      modifies this, db
+      ensures SaveUserDbPost(ctx, db)
+      decreases ctx
+    {
+      var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+      db.Save(saved);
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
+      decreases ctx
+    {
+      if ctx.authenticated && ctx.email != """" {
+        assert db != null;
+        AddPersistedUser(ctx);
+        payload := ReturnType.Content(""<!doctype html><html lang=\""en\""><body><h1>Saved user</h1><p>"" + ctx.email + ""</p></body></html>"");
+      } else {
+        payload := ReturnType.ChallengeGoogle(""/save_user"");
+      }
+    }
+  }
 }
 
 module DuctApis {
+
+  import opened DB
 
   import opened DuctImpl
 
@@ -467,12 +523,17 @@ module DuctApis {
     static method Endpoints() returns (all: AllApiEndpoints)
     {
       var catalog := new AllApiEndpoints();
+      var appDb := new Database();
       var formic_landing := new FormicLandingPage();
       var home := new ApiEndpoint(""/"", ReturnType.Content(""""), formic_landing);
       catalog.Add(home);
       var login_page := new LoginChallengePage();
       var login := new ApiEndpoint(""/login"", ReturnType.ChallengeGoogle(""/""), login_page);
       catalog.Add(login);
+      var save_user_page := new SaveUserPage();
+      save_user_page.SetDb(appDb);
+      var save_user := new ApiEndpoint(""/save_user"", ReturnType.Content(""""), save_user_page);
+      catalog.Add(save_user);
       var secure_page := new SecurePage();
       var secure := new ApiEndpoint(""/secure"", ReturnType.Content(""""), secure_page);
       catalog.Add(secure);
@@ -482,20 +543,34 @@ module DuctApis {
 }
 
 module DuctTools {
-  datatype ReturnType = Content(body: string) | ChallengeGoogle(returnUrl: string) | Redirect
 
+  import opened DB
   datatype UserInfo = UserInfo(name: string, email: string, picture: string, authenticated: bool)
 
-  trait {:termination false} IGenerator {
-    predicate PreCondition(u: UserInfo)
-      decreases u
+  datatype ReturnType = Content(body: string) | ChallengeGoogle(returnUrl: string) | Redirect
 
-    predicate PostCondition(u: UserInfo, payload: ReturnType)
-      decreases u, payload
+  trait {:termination false} IGenerator {
+    var db: Database?
+
+    method SetDb(db: Database)
+      modifies this
+      ensures this.db == db
+      decreases db
+    {
+      this.db := db;
+    }
+
+    predicate PreCondition(u: UserInfo, db: Database?)
+      decreases u, db
+
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+      decreases if db == null then {} else {db}, u, payload, db
 
     method Generate(user: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(user)
-      ensures PostCondition(user, payload)
+      requires PreCondition(user, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(user, payload, db)
       decreases user
   }
 
@@ -614,9 +689,73 @@ module DuctSpecs {
       Contains(payload.body, ""You are not authenticated""))
   }
 
+  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database?)
+    requires ctx.authenticated
+    requires ctx.email != """"
+    requires db != null
+    reads db
+    decreases {db}, ctx, db
+  {
+    ghost var saved: DbValue := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+    db.entries == old(db.entries) + [saved]
+  }
+
+  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database?)
+    reads if db == null then {} else {db}
+    decreases if db == null then {} else {db}, ctx, payload, db
+  {
+    if ctx.authenticated && ctx.email != """" then
+      db != null &&
+      payload.Content? &&
+      SaveUserDbPost(ctx, db)
+    else
+      payload == ReturnType.ChallengeGoogle(""/save_user"")
+  }
+
   import opened DuctTools
 
   import opened SpecsTools
+
+  import opened DB
+}
+
+module DB {
+  method {:extern ""DuctDbBridge"", ""Persist""} {:axiom} Persist(db: Database, value: DbValue)
+    ensures db.entries == old(db.entries)
+    decreases db, value
+
+  datatype DbTimestamp = DbTimestamp(value: string)
+
+  datatype OptionalDbTimestamp = MissingTimestamp | PresentTimestamp(value: DbTimestamp)
+
+  datatype PersistedUser = PersistedUser(email: string, name: string, picture: string)
+
+  datatype UserCreds = FormicUser(id: int, user: PersistedUser, launch_token: LaunchToken)
+
+  datatype LaunchToken = LaunchToken(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, used_at: OptionalDbTimestamp, created_at: DbTimestamp)
+
+  datatype Session = Session(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, revoked_at: OptionalDbTimestamp, created_at: DbTimestamp, last_seen_at: DbTimestamp)
+
+  datatype DbValue = DbPersistedUser(persistedUser: PersistedUser) | DbFormicUser(formicUser: UserCreds) | DbLaunchToken(launchToken: LaunchToken) | DbSession(session: Session)
+
+  class Database {
+    var entries: seq<DbValue>
+
+    constructor ()
+      ensures entries == []
+    {
+      entries := [];
+    }
+
+    method Save(value: DbValue)
+      modifies this
+      ensures entries == old(entries) + [value]
+      decreases value
+    {
+      entries := entries + [value];
+      Persist(this, value);
+    }
+  }
 }
 ")]
 
@@ -6289,6 +6428,9 @@ internal static class FuncExtensions {
   public static Func<U1, U2, UResult> DowncastClone<T1, T2, TResult, U1, U2, UResult>(this Func<T1, T2, TResult> F, Func<U1, T1> ArgConv1, Func<U2, T2> ArgConv2, Func<TResult, UResult> ResConv) {
     return (arg1, arg2) => ResConv(F(ArgConv1(arg1), ArgConv2(arg2)));
   }
+  public static Func<U1, U2, U3, UResult> DowncastClone<T1, T2, T3, TResult, U1, U2, U3, UResult>(this Func<T1, T2, T3, TResult> F, Func<U1, T1> ArgConv1, Func<U2, T2> ArgConv2, Func<U3, T3> ArgConv3, Func<TResult, UResult> ResConv) {
+    return (arg1, arg2, arg3) => ResConv(F(ArgConv1(arg1), ArgConv2(arg2), ArgConv3(arg3)));
+  }
 }
 // end of class FuncExtensions
 namespace SpecsTools {
@@ -6313,8 +6455,796 @@ namespace SpecsTools {
 namespace FormicProofHelpers {
 
 } // end of namespace FormicProofHelpers
+namespace DB {
+
+
+  public interface _IDbTimestamp {
+    bool is_DbTimestamp { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_value { get; }
+  }
+  public class DbTimestamp : _IDbTimestamp {
+    public readonly Dafny.ISequence<Dafny.Rune> _value;
+    public DbTimestamp(Dafny.ISequence<Dafny.Rune> @value) {
+      this._value = @value;
+    }
+    public static Dafny.ISequence<Dafny.Rune> DowncastClone(Dafny.ISequence<Dafny.Rune> _this) {
+      return _this;
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbTimestamp;
+      return oth != null && object.Equals(this._value, oth._value);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._value));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbTimestamp.DbTimestamp";
+      s += "(";
+      s += this._value.ToVerbatimString(true);
+      s += ")";
+      return s;
+    }
+    private static readonly Dafny.ISequence<Dafny.Rune> theDefault = Dafny.Sequence<Dafny.Rune>.Empty;
+    public static Dafny.ISequence<Dafny.Rune> Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<Dafny.ISequence<Dafny.Rune>> _TYPE = new Dafny.TypeDescriptor<Dafny.ISequence<Dafny.Rune>>(Dafny.Sequence<Dafny.Rune>.Empty);
+    public static Dafny.TypeDescriptor<Dafny.ISequence<Dafny.Rune>> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbTimestamp create(Dafny.ISequence<Dafny.Rune> @value) {
+      return new DbTimestamp(@value);
+    }
+    public static _IDbTimestamp create_DbTimestamp(Dafny.ISequence<Dafny.Rune> @value) {
+      return create(@value);
+    }
+    public bool is_DbTimestamp { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_value {
+      get {
+        return this._value;
+      }
+    }
+  }
+
+  public interface _IOptionalDbTimestamp {
+    bool is_MissingTimestamp { get; }
+    bool is_PresentTimestamp { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_value { get; }
+    _IOptionalDbTimestamp DowncastClone();
+  }
+  public abstract class OptionalDbTimestamp : _IOptionalDbTimestamp {
+    public OptionalDbTimestamp() {
+    }
+    private static readonly DB._IOptionalDbTimestamp theDefault = create_MissingTimestamp();
+    public static DB._IOptionalDbTimestamp Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IOptionalDbTimestamp> _TYPE = new Dafny.TypeDescriptor<DB._IOptionalDbTimestamp>(DB.OptionalDbTimestamp.Default());
+    public static Dafny.TypeDescriptor<DB._IOptionalDbTimestamp> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IOptionalDbTimestamp create_MissingTimestamp() {
+      return new OptionalDbTimestamp_MissingTimestamp();
+    }
+    public static _IOptionalDbTimestamp create_PresentTimestamp(Dafny.ISequence<Dafny.Rune> @value) {
+      return new OptionalDbTimestamp_PresentTimestamp(@value);
+    }
+    public bool is_MissingTimestamp { get { return this is OptionalDbTimestamp_MissingTimestamp; } }
+    public bool is_PresentTimestamp { get { return this is OptionalDbTimestamp_PresentTimestamp; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_value {
+      get {
+        var d = this;
+        return ((OptionalDbTimestamp_PresentTimestamp)d)._value;
+      }
+    }
+    public abstract _IOptionalDbTimestamp DowncastClone();
+  }
+  public class OptionalDbTimestamp_MissingTimestamp : OptionalDbTimestamp {
+    public OptionalDbTimestamp_MissingTimestamp() : base() {
+    }
+    public override _IOptionalDbTimestamp DowncastClone() {
+      if (this is _IOptionalDbTimestamp dt) { return dt; }
+      return new OptionalDbTimestamp_MissingTimestamp();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.OptionalDbTimestamp_MissingTimestamp;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.OptionalDbTimestamp.MissingTimestamp";
+      return s;
+    }
+  }
+  public class OptionalDbTimestamp_PresentTimestamp : OptionalDbTimestamp {
+    public readonly Dafny.ISequence<Dafny.Rune> _value;
+    public OptionalDbTimestamp_PresentTimestamp(Dafny.ISequence<Dafny.Rune> @value) : base() {
+      this._value = @value;
+    }
+    public override _IOptionalDbTimestamp DowncastClone() {
+      if (this is _IOptionalDbTimestamp dt) { return dt; }
+      return new OptionalDbTimestamp_PresentTimestamp(_value);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.OptionalDbTimestamp_PresentTimestamp;
+      return oth != null && object.Equals(this._value, oth._value);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._value));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.OptionalDbTimestamp.PresentTimestamp";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._value);
+      s += ")";
+      return s;
+    }
+  }
+
+  public interface _IPersistedUser {
+    bool is_PersistedUser { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_email { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_name { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_picture { get; }
+    _IPersistedUser DowncastClone();
+  }
+  public class PersistedUser : _IPersistedUser {
+    public readonly Dafny.ISequence<Dafny.Rune> _email;
+    public readonly Dafny.ISequence<Dafny.Rune> _name;
+    public readonly Dafny.ISequence<Dafny.Rune> _picture;
+    public PersistedUser(Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> picture) {
+      this._email = email;
+      this._name = name;
+      this._picture = picture;
+    }
+    public _IPersistedUser DowncastClone() {
+      if (this is _IPersistedUser dt) { return dt; }
+      return new PersistedUser(_email, _name, _picture);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.PersistedUser;
+      return oth != null && object.Equals(this._email, oth._email) && object.Equals(this._name, oth._name) && object.Equals(this._picture, oth._picture);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._email));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._name));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._picture));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.PersistedUser.PersistedUser";
+      s += "(";
+      s += this._email.ToVerbatimString(true);
+      s += ", ";
+      s += this._name.ToVerbatimString(true);
+      s += ", ";
+      s += this._picture.ToVerbatimString(true);
+      s += ")";
+      return s;
+    }
+    private static readonly DB._IPersistedUser theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty);
+    public static DB._IPersistedUser Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IPersistedUser> _TYPE = new Dafny.TypeDescriptor<DB._IPersistedUser>(DB.PersistedUser.Default());
+    public static Dafny.TypeDescriptor<DB._IPersistedUser> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IPersistedUser create(Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> picture) {
+      return new PersistedUser(email, name, picture);
+    }
+    public static _IPersistedUser create_PersistedUser(Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> picture) {
+      return create(email, name, picture);
+    }
+    public bool is_PersistedUser { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_email {
+      get {
+        return this._email;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_name {
+      get {
+        return this._name;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_picture {
+      get {
+        return this._picture;
+      }
+    }
+  }
+
+  public interface _IUserCreds {
+    bool is_FormicUser { get; }
+    BigInteger dtor_id { get; }
+    DB._IPersistedUser dtor_user { get; }
+    DB._ILaunchToken dtor_launch__token { get; }
+    _IUserCreds DowncastClone();
+  }
+  public class UserCreds : _IUserCreds {
+    public readonly BigInteger _id;
+    public readonly DB._IPersistedUser _user;
+    public readonly DB._ILaunchToken _launch__token;
+    public UserCreds(BigInteger id, DB._IPersistedUser user, DB._ILaunchToken launch__token) {
+      this._id = id;
+      this._user = user;
+      this._launch__token = launch__token;
+    }
+    public _IUserCreds DowncastClone() {
+      if (this is _IUserCreds dt) { return dt; }
+      return new UserCreds(_id, _user, _launch__token);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.UserCreds;
+      return oth != null && this._id == oth._id && object.Equals(this._user, oth._user) && object.Equals(this._launch__token, oth._launch__token);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._user));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._launch__token));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.UserCreds.FormicUser";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._user);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._launch__token);
+      s += ")";
+      return s;
+    }
+    private static readonly DB._IUserCreds theDefault = create(BigInteger.Zero, DB.PersistedUser.Default(), DB.LaunchToken.Default());
+    public static DB._IUserCreds Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IUserCreds> _TYPE = new Dafny.TypeDescriptor<DB._IUserCreds>(DB.UserCreds.Default());
+    public static Dafny.TypeDescriptor<DB._IUserCreds> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IUserCreds create(BigInteger id, DB._IPersistedUser user, DB._ILaunchToken launch__token) {
+      return new UserCreds(id, user, launch__token);
+    }
+    public static _IUserCreds create_FormicUser(BigInteger id, DB._IPersistedUser user, DB._ILaunchToken launch__token) {
+      return create(id, user, launch__token);
+    }
+    public bool is_FormicUser { get { return true; } }
+    public BigInteger dtor_id {
+      get {
+        return this._id;
+      }
+    }
+    public DB._IPersistedUser dtor_user {
+      get {
+        return this._user;
+      }
+    }
+    public DB._ILaunchToken dtor_launch__token {
+      get {
+        return this._launch__token;
+      }
+    }
+  }
+
+  public interface _ILaunchToken {
+    bool is_LaunchToken { get; }
+    BigInteger dtor_id { get; }
+    BigInteger dtor_user__id { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_token__hash { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_expires__at { get; }
+    DB._IOptionalDbTimestamp dtor_used__at { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_created__at { get; }
+    _ILaunchToken DowncastClone();
+  }
+  public class LaunchToken : _ILaunchToken {
+    public readonly BigInteger _id;
+    public readonly BigInteger _user__id;
+    public readonly Dafny.ISequence<Dafny.Rune> _token__hash;
+    public readonly Dafny.ISequence<Dafny.Rune> _expires__at;
+    public readonly DB._IOptionalDbTimestamp _used__at;
+    public readonly Dafny.ISequence<Dafny.Rune> _created__at;
+    public LaunchToken(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp used__at, Dafny.ISequence<Dafny.Rune> created__at) {
+      this._id = id;
+      this._user__id = user__id;
+      this._token__hash = token__hash;
+      this._expires__at = expires__at;
+      this._used__at = used__at;
+      this._created__at = created__at;
+    }
+    public _ILaunchToken DowncastClone() {
+      if (this is _ILaunchToken dt) { return dt; }
+      return new LaunchToken(_id, _user__id, _token__hash, _expires__at, _used__at, _created__at);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.LaunchToken;
+      return oth != null && this._id == oth._id && this._user__id == oth._user__id && object.Equals(this._token__hash, oth._token__hash) && object.Equals(this._expires__at, oth._expires__at) && object.Equals(this._used__at, oth._used__at) && object.Equals(this._created__at, oth._created__at);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._user__id));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._token__hash));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._expires__at));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._used__at));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._created__at));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.LaunchToken.LaunchToken";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._user__id);
+      s += ", ";
+      s += this._token__hash.ToVerbatimString(true);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._expires__at);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._used__at);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._created__at);
+      s += ")";
+      return s;
+    }
+    private static readonly DB._ILaunchToken theDefault = create(BigInteger.Zero, BigInteger.Zero, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, DB.OptionalDbTimestamp.Default(), Dafny.Sequence<Dafny.Rune>.Empty);
+    public static DB._ILaunchToken Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._ILaunchToken> _TYPE = new Dafny.TypeDescriptor<DB._ILaunchToken>(DB.LaunchToken.Default());
+    public static Dafny.TypeDescriptor<DB._ILaunchToken> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _ILaunchToken create(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp used__at, Dafny.ISequence<Dafny.Rune> created__at) {
+      return new LaunchToken(id, user__id, token__hash, expires__at, used__at, created__at);
+    }
+    public static _ILaunchToken create_LaunchToken(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp used__at, Dafny.ISequence<Dafny.Rune> created__at) {
+      return create(id, user__id, token__hash, expires__at, used__at, created__at);
+    }
+    public bool is_LaunchToken { get { return true; } }
+    public BigInteger dtor_id {
+      get {
+        return this._id;
+      }
+    }
+    public BigInteger dtor_user__id {
+      get {
+        return this._user__id;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_token__hash {
+      get {
+        return this._token__hash;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_expires__at {
+      get {
+        return this._expires__at;
+      }
+    }
+    public DB._IOptionalDbTimestamp dtor_used__at {
+      get {
+        return this._used__at;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_created__at {
+      get {
+        return this._created__at;
+      }
+    }
+  }
+
+  public interface _ISession {
+    bool is_Session { get; }
+    BigInteger dtor_id { get; }
+    BigInteger dtor_user__id { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_token__hash { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_expires__at { get; }
+    DB._IOptionalDbTimestamp dtor_revoked__at { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_created__at { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_last__seen__at { get; }
+    _ISession DowncastClone();
+  }
+  public class Session : _ISession {
+    public readonly BigInteger _id;
+    public readonly BigInteger _user__id;
+    public readonly Dafny.ISequence<Dafny.Rune> _token__hash;
+    public readonly Dafny.ISequence<Dafny.Rune> _expires__at;
+    public readonly DB._IOptionalDbTimestamp _revoked__at;
+    public readonly Dafny.ISequence<Dafny.Rune> _created__at;
+    public readonly Dafny.ISequence<Dafny.Rune> _last__seen__at;
+    public Session(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp revoked__at, Dafny.ISequence<Dafny.Rune> created__at, Dafny.ISequence<Dafny.Rune> last__seen__at) {
+      this._id = id;
+      this._user__id = user__id;
+      this._token__hash = token__hash;
+      this._expires__at = expires__at;
+      this._revoked__at = revoked__at;
+      this._created__at = created__at;
+      this._last__seen__at = last__seen__at;
+    }
+    public _ISession DowncastClone() {
+      if (this is _ISession dt) { return dt; }
+      return new Session(_id, _user__id, _token__hash, _expires__at, _revoked__at, _created__at, _last__seen__at);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Session;
+      return oth != null && this._id == oth._id && this._user__id == oth._user__id && object.Equals(this._token__hash, oth._token__hash) && object.Equals(this._expires__at, oth._expires__at) && object.Equals(this._revoked__at, oth._revoked__at) && object.Equals(this._created__at, oth._created__at) && object.Equals(this._last__seen__at, oth._last__seen__at);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._user__id));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._token__hash));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._expires__at));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._revoked__at));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._created__at));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._last__seen__at));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Session.Session";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._user__id);
+      s += ", ";
+      s += this._token__hash.ToVerbatimString(true);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._expires__at);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._revoked__at);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._created__at);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._last__seen__at);
+      s += ")";
+      return s;
+    }
+    private static readonly DB._ISession theDefault = create(BigInteger.Zero, BigInteger.Zero, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, DB.OptionalDbTimestamp.Default(), Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty);
+    public static DB._ISession Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._ISession> _TYPE = new Dafny.TypeDescriptor<DB._ISession>(DB.Session.Default());
+    public static Dafny.TypeDescriptor<DB._ISession> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _ISession create(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp revoked__at, Dafny.ISequence<Dafny.Rune> created__at, Dafny.ISequence<Dafny.Rune> last__seen__at) {
+      return new Session(id, user__id, token__hash, expires__at, revoked__at, created__at, last__seen__at);
+    }
+    public static _ISession create_Session(BigInteger id, BigInteger user__id, Dafny.ISequence<Dafny.Rune> token__hash, Dafny.ISequence<Dafny.Rune> expires__at, DB._IOptionalDbTimestamp revoked__at, Dafny.ISequence<Dafny.Rune> created__at, Dafny.ISequence<Dafny.Rune> last__seen__at) {
+      return create(id, user__id, token__hash, expires__at, revoked__at, created__at, last__seen__at);
+    }
+    public bool is_Session { get { return true; } }
+    public BigInteger dtor_id {
+      get {
+        return this._id;
+      }
+    }
+    public BigInteger dtor_user__id {
+      get {
+        return this._user__id;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_token__hash {
+      get {
+        return this._token__hash;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_expires__at {
+      get {
+        return this._expires__at;
+      }
+    }
+    public DB._IOptionalDbTimestamp dtor_revoked__at {
+      get {
+        return this._revoked__at;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_created__at {
+      get {
+        return this._created__at;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_last__seen__at {
+      get {
+        return this._last__seen__at;
+      }
+    }
+  }
+
+  public interface _IDbValue {
+    bool is_DbPersistedUser { get; }
+    bool is_DbFormicUser { get; }
+    bool is_DbLaunchToken { get; }
+    bool is_DbSession { get; }
+    DB._IPersistedUser dtor_persistedUser { get; }
+    DB._IUserCreds dtor_formicUser { get; }
+    DB._ILaunchToken dtor_launchToken { get; }
+    DB._ISession dtor_session { get; }
+    _IDbValue DowncastClone();
+  }
+  public abstract class DbValue : _IDbValue {
+    public DbValue() {
+    }
+    private static readonly DB._IDbValue theDefault = create_DbPersistedUser(DB.PersistedUser.Default());
+    public static DB._IDbValue Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbValue> _TYPE = new Dafny.TypeDescriptor<DB._IDbValue>(DB.DbValue.Default());
+    public static Dafny.TypeDescriptor<DB._IDbValue> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbValue create_DbPersistedUser(DB._IPersistedUser persistedUser) {
+      return new DbValue_DbPersistedUser(persistedUser);
+    }
+    public static _IDbValue create_DbFormicUser(DB._IUserCreds formicUser) {
+      return new DbValue_DbFormicUser(formicUser);
+    }
+    public static _IDbValue create_DbLaunchToken(DB._ILaunchToken launchToken) {
+      return new DbValue_DbLaunchToken(launchToken);
+    }
+    public static _IDbValue create_DbSession(DB._ISession session) {
+      return new DbValue_DbSession(session);
+    }
+    public bool is_DbPersistedUser { get { return this is DbValue_DbPersistedUser; } }
+    public bool is_DbFormicUser { get { return this is DbValue_DbFormicUser; } }
+    public bool is_DbLaunchToken { get { return this is DbValue_DbLaunchToken; } }
+    public bool is_DbSession { get { return this is DbValue_DbSession; } }
+    public DB._IPersistedUser dtor_persistedUser {
+      get {
+        var d = this;
+        return ((DbValue_DbPersistedUser)d)._persistedUser;
+      }
+    }
+    public DB._IUserCreds dtor_formicUser {
+      get {
+        var d = this;
+        return ((DbValue_DbFormicUser)d)._formicUser;
+      }
+    }
+    public DB._ILaunchToken dtor_launchToken {
+      get {
+        var d = this;
+        return ((DbValue_DbLaunchToken)d)._launchToken;
+      }
+    }
+    public DB._ISession dtor_session {
+      get {
+        var d = this;
+        return ((DbValue_DbSession)d)._session;
+      }
+    }
+    public abstract _IDbValue DowncastClone();
+  }
+  public class DbValue_DbPersistedUser : DbValue {
+    public readonly DB._IPersistedUser _persistedUser;
+    public DbValue_DbPersistedUser(DB._IPersistedUser persistedUser) : base() {
+      this._persistedUser = persistedUser;
+    }
+    public override _IDbValue DowncastClone() {
+      if (this is _IDbValue dt) { return dt; }
+      return new DbValue_DbPersistedUser(_persistedUser);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbValue_DbPersistedUser;
+      return oth != null && object.Equals(this._persistedUser, oth._persistedUser);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._persistedUser));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbValue.DbPersistedUser";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._persistedUser);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbValue_DbFormicUser : DbValue {
+    public readonly DB._IUserCreds _formicUser;
+    public DbValue_DbFormicUser(DB._IUserCreds formicUser) : base() {
+      this._formicUser = formicUser;
+    }
+    public override _IDbValue DowncastClone() {
+      if (this is _IDbValue dt) { return dt; }
+      return new DbValue_DbFormicUser(_formicUser);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbValue_DbFormicUser;
+      return oth != null && object.Equals(this._formicUser, oth._formicUser);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._formicUser));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbValue.DbFormicUser";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._formicUser);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbValue_DbLaunchToken : DbValue {
+    public readonly DB._ILaunchToken _launchToken;
+    public DbValue_DbLaunchToken(DB._ILaunchToken launchToken) : base() {
+      this._launchToken = launchToken;
+    }
+    public override _IDbValue DowncastClone() {
+      if (this is _IDbValue dt) { return dt; }
+      return new DbValue_DbLaunchToken(_launchToken);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbValue_DbLaunchToken;
+      return oth != null && object.Equals(this._launchToken, oth._launchToken);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._launchToken));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbValue.DbLaunchToken";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._launchToken);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbValue_DbSession : DbValue {
+    public readonly DB._ISession _session;
+    public DbValue_DbSession(DB._ISession session) : base() {
+      this._session = session;
+    }
+    public override _IDbValue DowncastClone() {
+      if (this is _IDbValue dt) { return dt; }
+      return new DbValue_DbSession(_session);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbValue_DbSession;
+      return oth != null && object.Equals(this._session, oth._session);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._session));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbValue.DbSession";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._session);
+      s += ")";
+      return s;
+    }
+  }
+
+  public partial class Database {
+    public Database() {
+      this.entries = Dafny.Sequence<DB._IDbValue>.Empty;
+    }
+    public Dafny.ISequence<DB._IDbValue> entries {get; set;}
+    public void __ctor()
+    {
+      (this).entries = Dafny.Sequence<DB._IDbValue>.FromElements();
+    }
+    public void Save(DB._IDbValue @value)
+    {
+      (this).entries = Dafny.Sequence<DB._IDbValue>.Concat(this.entries, Dafny.Sequence<DB._IDbValue>.FromElements(@value));
+      DuctDbBridge.Persist(this, @value);
+    }
+  }
+} // end of namespace DB
 namespace DuctTools {
 
+
+  public interface _IUserInfo {
+    bool is_UserInfo { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_name { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_email { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_picture { get; }
+    bool dtor_authenticated { get; }
+    _IUserInfo DowncastClone();
+  }
+  public class UserInfo : _IUserInfo {
+    public readonly Dafny.ISequence<Dafny.Rune> _name;
+    public readonly Dafny.ISequence<Dafny.Rune> _email;
+    public readonly Dafny.ISequence<Dafny.Rune> _picture;
+    public readonly bool _authenticated;
+    public UserInfo(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
+      this._name = name;
+      this._email = email;
+      this._picture = picture;
+      this._authenticated = authenticated;
+    }
+    public _IUserInfo DowncastClone() {
+      if (this is _IUserInfo dt) { return dt; }
+      return new UserInfo(_name, _email, _picture, _authenticated);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DuctTools.UserInfo;
+      return oth != null && object.Equals(this._name, oth._name) && object.Equals(this._email, oth._email) && object.Equals(this._picture, oth._picture) && this._authenticated == oth._authenticated;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._name));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._email));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._picture));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._authenticated));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DuctTools.UserInfo.UserInfo";
+      s += "(";
+      s += this._name.ToVerbatimString(true);
+      s += ", ";
+      s += this._email.ToVerbatimString(true);
+      s += ", ";
+      s += this._picture.ToVerbatimString(true);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._authenticated);
+      s += ")";
+      return s;
+    }
+    private static readonly DuctTools._IUserInfo theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, false);
+    public static DuctTools._IUserInfo Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DuctTools._IUserInfo> _TYPE = new Dafny.TypeDescriptor<DuctTools._IUserInfo>(DuctTools.UserInfo.Default());
+    public static Dafny.TypeDescriptor<DuctTools._IUserInfo> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IUserInfo create(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
+      return new UserInfo(name, email, picture, authenticated);
+    }
+    public static _IUserInfo create_UserInfo(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
+      return create(name, email, picture, authenticated);
+    }
+    public bool is_UserInfo { get { return true; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_name {
+      get {
+        return this._name;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_email {
+      get {
+        return this._email;
+      }
+    }
+    public Dafny.ISequence<Dafny.Rune> dtor_picture {
+      get {
+        return this._picture;
+      }
+    }
+    public bool dtor_authenticated {
+      get {
+        return this._authenticated;
+      }
+    }
+  }
 
   public interface _IReturnType {
     bool is_Content { get; }
@@ -6437,98 +7367,17 @@ namespace DuctTools {
     }
   }
 
-  public interface _IUserInfo {
-    bool is_UserInfo { get; }
-    Dafny.ISequence<Dafny.Rune> dtor_name { get; }
-    Dafny.ISequence<Dafny.Rune> dtor_email { get; }
-    Dafny.ISequence<Dafny.Rune> dtor_picture { get; }
-    bool dtor_authenticated { get; }
-    _IUserInfo DowncastClone();
-  }
-  public class UserInfo : _IUserInfo {
-    public readonly Dafny.ISequence<Dafny.Rune> _name;
-    public readonly Dafny.ISequence<Dafny.Rune> _email;
-    public readonly Dafny.ISequence<Dafny.Rune> _picture;
-    public readonly bool _authenticated;
-    public UserInfo(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
-      this._name = name;
-      this._email = email;
-      this._picture = picture;
-      this._authenticated = authenticated;
-    }
-    public _IUserInfo DowncastClone() {
-      if (this is _IUserInfo dt) { return dt; }
-      return new UserInfo(_name, _email, _picture, _authenticated);
-    }
-    public override bool Equals(object other) {
-      var oth = other as DuctTools.UserInfo;
-      return oth != null && object.Equals(this._name, oth._name) && object.Equals(this._email, oth._email) && object.Equals(this._picture, oth._picture) && this._authenticated == oth._authenticated;
-    }
-    public override int GetHashCode() {
-      ulong hash = 5381;
-      hash = ((hash << 5) + hash) + 0;
-      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._name));
-      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._email));
-      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._picture));
-      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._authenticated));
-      return (int) hash;
-    }
-    public override string ToString() {
-      string s = "DuctTools.UserInfo.UserInfo";
-      s += "(";
-      s += this._name.ToVerbatimString(true);
-      s += ", ";
-      s += this._email.ToVerbatimString(true);
-      s += ", ";
-      s += this._picture.ToVerbatimString(true);
-      s += ", ";
-      s += Dafny.Helpers.ToString(this._authenticated);
-      s += ")";
-      return s;
-    }
-    private static readonly DuctTools._IUserInfo theDefault = create(Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, Dafny.Sequence<Dafny.Rune>.Empty, false);
-    public static DuctTools._IUserInfo Default() {
-      return theDefault;
-    }
-    private static readonly Dafny.TypeDescriptor<DuctTools._IUserInfo> _TYPE = new Dafny.TypeDescriptor<DuctTools._IUserInfo>(DuctTools.UserInfo.Default());
-    public static Dafny.TypeDescriptor<DuctTools._IUserInfo> _TypeDescriptor() {
-      return _TYPE;
-    }
-    public static _IUserInfo create(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
-      return new UserInfo(name, email, picture, authenticated);
-    }
-    public static _IUserInfo create_UserInfo(Dafny.ISequence<Dafny.Rune> name, Dafny.ISequence<Dafny.Rune> email, Dafny.ISequence<Dafny.Rune> picture, bool authenticated) {
-      return create(name, email, picture, authenticated);
-    }
-    public bool is_UserInfo { get { return true; } }
-    public Dafny.ISequence<Dafny.Rune> dtor_name {
-      get {
-        return this._name;
-      }
-    }
-    public Dafny.ISequence<Dafny.Rune> dtor_email {
-      get {
-        return this._email;
-      }
-    }
-    public Dafny.ISequence<Dafny.Rune> dtor_picture {
-      get {
-        return this._picture;
-      }
-    }
-    public bool dtor_authenticated {
-      get {
-        return this._authenticated;
-      }
-    }
-  }
-
   public interface IGenerator {
-    bool PreCondition(DuctTools._IUserInfo u);
-    bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload);
+    DB.Database db { get; set; }
+    void SetDb(DB.Database db);
+    bool PreCondition(DuctTools._IUserInfo u, DB.Database db);
     DuctTools._IReturnType Generate(DuctTools._IUserInfo user);
   }
   public class _Companion_IGenerator {
+    public static void SetDb(DuctTools.IGenerator _this, DB.Database db)
+    {
+      (_this).db = db;
+    }
   }
 
   public partial class ApiEndpoint {
@@ -6607,16 +7456,27 @@ namespace DuctImpl {
 
   public partial class FormicLandingPage : DuctTools.IGenerator {
     public FormicLandingPage() {
+      this._db = ((DB.Database)null);
+    }
+    public DB.Database _db {get; set;}
+    public DB.Database db {
+      get {
+        return this._db;
+      }
+      set {
+        this._db = value;
+      }
+    }
+    public void SetDb(DB.Database db)
+    {
+      DuctTools._Companion_IGenerator.SetDb(this, db);
     }
     public void __ctor()
     {
     }
-    public bool PreCondition(DuctTools._IUserInfo u) {
-      return DuctSpecs.__default.LandingPagePre(u);
-    }
-    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
+    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
     {
-      return DuctSpecs.__default.LandingPagePost(u, payload);
+      return DuctSpecs.__default.LandingPagePre(u);
     }
     public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
     {
@@ -6674,7 +7534,7 @@ namespace DuctImpl {
         _15_pictureMeta = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">Profile image connected</span>");
       }
       Dafny.ISequence<Dafny.Rune> _16_html;
-      _16_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a:hover{transform:translateY(-1px);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!-- proof:")), _12_tail5), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" -->")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), _13_picturePanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A cleaner generated surface for the duct demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), _14_emailPanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), _15_pictureMeta), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
+      _16_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a:hover{transform:translateY(-1px);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!-- proof:")), _12_tail5), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" -->")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), _13_picturePanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A cleaner generated surface for the formic demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), _14_emailPanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), _15_pictureMeta), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
       Dafny.ISequence<Dafny.Rune> _17_statusPrefix;
       _17_statusPrefix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|status|");
       Dafny.ISequence<Dafny.Rune> _18_statusSuffix;
@@ -6743,16 +7603,27 @@ namespace DuctImpl {
 
   public partial class LoginChallengePage : DuctTools.IGenerator {
     public LoginChallengePage() {
+      this._db = ((DB.Database)null);
+    }
+    public DB.Database _db {get; set;}
+    public DB.Database db {
+      get {
+        return this._db;
+      }
+      set {
+        this._db = value;
+      }
+    }
+    public void SetDb(DB.Database db)
+    {
+      DuctTools._Companion_IGenerator.SetDb(this, db);
     }
     public void __ctor()
     {
     }
-    public bool PreCondition(DuctTools._IUserInfo u) {
-      return true;
-    }
-    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
+    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
     {
-      return DuctSpecs.__default.LoginPost(u, payload);
+      return true;
     }
     public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
     {
@@ -6764,16 +7635,27 @@ namespace DuctImpl {
 
   public partial class SecurePage : DuctTools.IGenerator {
     public SecurePage() {
+      this._db = ((DB.Database)null);
+    }
+    public DB.Database _db {get; set;}
+    public DB.Database db {
+      get {
+        return this._db;
+      }
+      set {
+        this._db = value;
+      }
+    }
+    public void SetDb(DB.Database db)
+    {
+      DuctTools._Companion_IGenerator.SetDb(this, db);
     }
     public void __ctor()
     {
     }
-    public bool PreCondition(DuctTools._IUserInfo u) {
-      return true;
-    }
-    public bool PostCondition(DuctTools._IUserInfo u, DuctTools._IReturnType payload)
+    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
     {
-      return DuctSpecs.__default.SecurePost(u, payload);
+      return true;
     }
     public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
     {
@@ -6804,6 +7686,49 @@ namespace DuctImpl {
       return payload;
     }
   }
+
+  public partial class SaveUserPage : DuctTools.IGenerator {
+    public SaveUserPage() {
+      this._db = ((DB.Database)null);
+    }
+    public DB.Database _db {get; set;}
+    public DB.Database db {
+      get {
+        return this._db;
+      }
+      set {
+        this._db = value;
+      }
+    }
+    public void SetDb(DB.Database db)
+    {
+      DuctTools._Companion_IGenerator.SetDb(this, db);
+    }
+    public void __ctor()
+    {
+    }
+    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
+    {
+      return (!(((u).dtor_authenticated) && (!((u).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))))) || ((db) != (object) ((DB.Database)null));
+    }
+    public void AddPersistedUser(DuctTools._IUserInfo ctx)
+    {
+      DB._IDbValue _0_saved;
+      _0_saved = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
+      (this.db).Save(_0_saved);
+    }
+    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
+    {
+      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
+      if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
+        (this).AddPersistedUser(ctx);
+        payload = DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><body><h1>Saved user</h1><p>"), (ctx).dtor_email), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>")));
+      } else {
+        payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
+      }
+      return payload;
+    }
+  }
 } // end of namespace DuctImpl
 namespace DuctApis {
 
@@ -6818,33 +7743,47 @@ namespace DuctApis {
       DuctTools.AllApiEndpoints _nw0 = new DuctTools.AllApiEndpoints();
       _nw0.__ctor();
       _0_catalog = _nw0;
-      DuctImpl.FormicLandingPage _1_formic__landing;
-      DuctImpl.FormicLandingPage _nw1 = new DuctImpl.FormicLandingPage();
+      DB.Database _1_appDb;
+      DB.Database _nw1 = new DB.Database();
       _nw1.__ctor();
-      _1_formic__landing = _nw1;
-      DuctTools.ApiEndpoint _2_home;
-      DuctTools.ApiEndpoint _nw2 = new DuctTools.ApiEndpoint();
-      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _1_formic__landing);
-      _2_home = _nw2;
-      (_0_catalog).Add(_2_home);
-      DuctImpl.LoginChallengePage _3_login__page;
-      DuctImpl.LoginChallengePage _nw3 = new DuctImpl.LoginChallengePage();
-      _nw3.__ctor();
-      _3_login__page = _nw3;
-      DuctTools.ApiEndpoint _4_login;
-      DuctTools.ApiEndpoint _nw4 = new DuctTools.ApiEndpoint();
-      _nw4.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")), _3_login__page);
-      _4_login = _nw4;
-      (_0_catalog).Add(_4_login);
-      DuctImpl.SecurePage _5_secure__page;
-      DuctImpl.SecurePage _nw5 = new DuctImpl.SecurePage();
-      _nw5.__ctor();
-      _5_secure__page = _nw5;
-      DuctTools.ApiEndpoint _6_secure;
-      DuctTools.ApiEndpoint _nw6 = new DuctTools.ApiEndpoint();
-      _nw6.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _5_secure__page);
-      _6_secure = _nw6;
-      (_0_catalog).Add(_6_secure);
+      _1_appDb = _nw1;
+      DuctImpl.FormicLandingPage _2_formic__landing;
+      DuctImpl.FormicLandingPage _nw2 = new DuctImpl.FormicLandingPage();
+      _nw2.__ctor();
+      _2_formic__landing = _nw2;
+      DuctTools.ApiEndpoint _3_home;
+      DuctTools.ApiEndpoint _nw3 = new DuctTools.ApiEndpoint();
+      _nw3.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _2_formic__landing);
+      _3_home = _nw3;
+      (_0_catalog).Add(_3_home);
+      DuctImpl.LoginChallengePage _4_login__page;
+      DuctImpl.LoginChallengePage _nw4 = new DuctImpl.LoginChallengePage();
+      _nw4.__ctor();
+      _4_login__page = _nw4;
+      DuctTools.ApiEndpoint _5_login;
+      DuctTools.ApiEndpoint _nw5 = new DuctTools.ApiEndpoint();
+      _nw5.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")), _4_login__page);
+      _5_login = _nw5;
+      (_0_catalog).Add(_5_login);
+      DuctImpl.SaveUserPage _6_save__user__page;
+      DuctImpl.SaveUserPage _nw6 = new DuctImpl.SaveUserPage();
+      _nw6.__ctor();
+      _6_save__user__page = _nw6;
+      (_6_save__user__page).SetDb(_1_appDb);
+      DuctTools.ApiEndpoint _7_save__user;
+      DuctTools.ApiEndpoint _nw7 = new DuctTools.ApiEndpoint();
+      _nw7.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _6_save__user__page);
+      _7_save__user = _nw7;
+      (_0_catalog).Add(_7_save__user);
+      DuctImpl.SecurePage _8_secure__page;
+      DuctImpl.SecurePage _nw8 = new DuctImpl.SecurePage();
+      _nw8.__ctor();
+      _8_secure__page = _nw8;
+      DuctTools.ApiEndpoint _9_secure;
+      DuctTools.ApiEndpoint _nw9 = new DuctTools.ApiEndpoint();
+      _nw9.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _8_secure__page);
+      _9_secure = _nw9;
+      (_0_catalog).Add(_9_secure);
       all = _0_catalog;
       return all;
     }

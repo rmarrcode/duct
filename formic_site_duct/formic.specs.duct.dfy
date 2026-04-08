@@ -2,6 +2,7 @@ module DuctSpecs {
 
   import opened DuctTools
   import opened SpecsTools
+  import opened DB
 
   predicate LandingPagePre(ctx: UserInfo)
   {
@@ -54,6 +55,26 @@ module DuctSpecs {
     )
   }
 
+  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database?)
+    requires ctx.authenticated
+    requires ctx.email != ""
+    requires db != null
+    reads db
+  {
+    var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+    db.entries == old(db.entries) + [saved]
+  }
+
+  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database?)
+    reads if db == null then {} else {db}
+  {
+    if ctx.authenticated && ctx.email != "" then
+      db != null &&
+      payload.Content? &&
+      SaveUserDbPost(ctx, db)
+    else
+      payload == ReturnType.ChallengeGoogle("/save_user")
+  }
+
+
 }
-
-

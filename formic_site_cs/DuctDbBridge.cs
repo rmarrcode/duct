@@ -1,0 +1,126 @@
+using System.Collections;
+using System.Numerics;
+using System.Reflection;
+using System.Text.Json;
+using Dafny;
+using Microsoft.Data.Sqlite;
+
+public static class DuctDbBridge
+{
+    private const string ConnectionString = "Data Source=formic.db";
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false
+    };
+
+    public static void Persist(object db, object value)
+    {
+        EnsureSchema();
+
+        string rootKind = value.GetType().FullName ?? value.GetType().Name;
+        string payloadJson = JsonSerializer.Serialize(ToPlainObject(value), JsonOptions);
+
+        using var connection = new SqliteConnection(ConnectionString);
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+insert into dafny_objects(root_kind, payload_json)
+values ($root_kind, $payload_json);";
+        command.Parameters.AddWithValue("$root_kind", rootKind);
+        command.Parameters.AddWithValue("$payload_json", payloadJson);
+        command.ExecuteNonQuery();
+    }
+
+    private static object? ToPlainObject(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (value is string s)
+        {
+            return s;
+        }
+
+        if (value is bool or byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal)
+        {
+            return value;
+        }
+
+        if (value is BigInteger big)
+        {
+            return big.ToString();
+        }
+
+        if (value is IEnumerable<Rune> runes)
+        {
+            return string.Concat(runes.Select(r => char.ConvertFromUtf32(r.Value)));
+        }
+
+        if (value is IDictionary dictionary)
+        {
+            var mapped = new Dictionary<string, object?>();
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                string key = entry.Key?.ToString() ?? "null";
+                mapped[key] = ToPlainObject(entry.Value);
+            }
+            return mapped;
+        }
+
+        if (value is IEnumerable enumerable)
+        {
+            var items = new List<object?>();
+            foreach (var item in enumerable)
+            {
+                items.Add(ToPlainObject(item));
+            }
+            return items;
+        }
+
+        PropertyInfo[] props = value.GetType()
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && p.Name.StartsWith("dtor_", StringComparison.Ordinal))
+            .ToArray();
+
+        if (props.Length == 0)
+        {
+            return value.ToString();
+        }
+
+        var result = new Dictionary<string, object?>();
+        result["__type"] = value.GetType().FullName ?? value.GetType().Name;
+
+        foreach (PropertyInfo prop in props)
+        {
+            result[NormalizePropertyName(prop.Name)] = ToPlainObject(prop.GetValue(value));
+        }
+
+        return result;
+    }
+
+    private static string NormalizePropertyName(string propertyName)
+    {
+        string name = propertyName["dtor_".Length..];
+        return name.Replace("__", "_");
+    }
+
+    private static void EnsureSchema()
+    {
+        using var connection = new SqliteConnection(ConnectionString);
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+create table if not exists dafny_objects (
+  id integer primary key autoincrement,
+  root_kind text not null,
+  payload_json text not null,
+  created_at text not null default current_timestamp
+);";
+        command.ExecuteNonQuery();
+    }
+}

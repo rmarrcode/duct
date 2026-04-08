@@ -1,11 +1,5 @@
 module DB {
 
-  import opened DuctTools
-
-  // import opened DuctTools
-
-  // Store timestamps as ISO-8601 strings at the boundary to keep the schema
-  // simple for generated C# and later host-side persistence adapters.
   datatype DbTimestamp = DbTimestamp(value: string)
 
   datatype OptionalDbTimestamp =
@@ -18,14 +12,12 @@ module DB {
     picture: string
   )
 
-  // users table
   datatype UserCreds = FormicUser(
     id: int,
-    user: UserInfo,
+    user: PersistedUser,
     launch_token: LaunchToken
   )
 
-  // launch_tokens table
   datatype LaunchToken = LaunchToken(
     id: int,
     user_id: int,
@@ -35,7 +27,6 @@ module DB {
     created_at: DbTimestamp
   )
 
-  // sessions table
   datatype Session = Session(
     id: int,
     user_id: int,
@@ -45,4 +36,35 @@ module DB {
     created_at: DbTimestamp,
     last_seen_at: DbTimestamp
   )
+
+  datatype DbValue =
+    DbPersistedUser(persistedUser: PersistedUser)
+  | DbFormicUser(formicUser: UserCreds)
+  | DbLaunchToken(launchToken: LaunchToken)
+  | DbSession(session: Session)
+
+  /*
+  Goal of DB is to guarantee that any specifications made on entries 
+  is reflected in actual DB
+  */
+  class Database {
+    var entries: seq<DbValue>
+
+    constructor ()
+      ensures entries == []
+    {
+      entries := [];
+    }
+
+    method Save(value: DbValue)
+      modifies this
+      ensures entries == old(entries) + [value]
+    {
+      entries := entries + [value];
+      Persist(this, value);
+    }
+  }
+
+  method {:extern "DuctDbBridge", "Persist"} {:axiom} Persist(db: Database, value: DbValue)
+    ensures db.entries == old(db.entries)
 }

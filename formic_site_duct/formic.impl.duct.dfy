@@ -1,3 +1,4 @@
+include "db.dfy"
 include "duct.dfy"
 include "formic.specs.duct.dfy"
 
@@ -131,6 +132,7 @@ module FormicProofHelpers {
 
 module DuctImpl {
 
+  import opened DB
   import opened DuctTools
   import opened DuctSpecs
   import opened SpecsTools
@@ -141,12 +143,17 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo) { LandingPagePre(u) }
-    predicate PostCondition(u: UserInfo, payload: ReturnType) { LandingPagePost(u, payload) }
+    predicate PreCondition(u: UserInfo, db: Database?) { LandingPagePre(u) }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+    {
+      LandingPagePost(u, payload)
+    }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
     {
       var status := if ctx.authenticated then "Signed in" else "Anonymous";
       var action := if ctx.authenticated then Link("Log out", "/logout") else Link("Sign in", "/login");
@@ -459,14 +466,17 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo) { true }
-    predicate PostCondition(u: UserInfo, payload: ReturnType) {
+    predicate PreCondition(u: UserInfo, db: Database?) { true }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+    {
       LoginPost(u, payload)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
     {
       payload := ReturnType.ChallengeGoogle("/");
     }
@@ -476,14 +486,17 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo) { true }
-    predicate PostCondition(u: UserInfo, payload: ReturnType) {
+    predicate PreCondition(u: UserInfo, db: Database?) { true }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+    {
       SecurePost(u, payload)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx)
-      ensures PostCondition(ctx, payload)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
     {
       if ctx.authenticated {
         var logout := Link("Log out", "/logout");
@@ -519,4 +532,48 @@ module DuctImpl {
       }
     }
   }
+
+  class SaveUserPage extends IGenerator {
+
+    constructor () {}
+
+    predicate PreCondition(u: UserInfo, db: Database?) {
+      !(u.authenticated && u.email != "") || db != null
+    }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
+      reads if db == null then {} else {db}
+    {
+      SaveUserPost(u, payload, db)
+    }
+
+    method AddPersistedUser(ctx: UserInfo)
+      requires ctx.authenticated
+      requires ctx.email != ""
+      requires db != null
+      modifies this, db
+      ensures SaveUserDbPost(ctx, db)
+    {
+      var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+      db.Save(saved);
+    }
+
+    method Generate(ctx: UserInfo) returns (payload: ReturnType)
+      requires PreCondition(ctx, db)
+      modifies this, if db == null then {} else {db}
+      ensures PostCondition(ctx, payload, db)
+    {
+      if ctx.authenticated && ctx.email != "" {
+        assert db != null;
+        AddPersistedUser(ctx);
+        payload := ReturnType.Content(
+          "<!doctype html><html lang=\"en\"><body><h1>Saved user</h1><p>" +
+          ctx.email +
+          "</p></body></html>");
+      } else {
+        payload := ReturnType.ChallengeGoogle("/save_user");
+      }
+    }
+
+  }
+
 }
