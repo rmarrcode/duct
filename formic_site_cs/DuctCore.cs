@@ -67,7 +67,7 @@ for (int i = 0; i < endpointCount; i++)
     app.MapGet(path, (HttpContext context) =>
     {
         _IUserInfo userInfo = ToDafnyUserInfo(context.User);
-        return RenderResponse(ep.generator, userInfo);
+        return ReturnResponse(ep.generator, userInfo);
     });
 }
 
@@ -87,7 +87,7 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static IResult RenderResponse(IGenerator generator, DuctTools._IUserInfo user)
+static IResult ReturnResponse(IGenerator generator, DuctTools._IUserInfo user)
 {
     _IReturnType payload = generator.Generate(user);
 
@@ -104,6 +104,12 @@ static IResult RenderResponse(IGenerator generator, DuctTools._IUserInfo user)
             RedirectUri = FromDafnyString(payload.dtor_returnUrl)
         };
         return Results.Challenge(props, new[] { GoogleDefaults.AuthenticationScheme });
+    }
+
+    if (payload.is_Redirect)
+    {
+        string url = FromDafnyString(payload.dtor_url);
+        return Results.Redirect(url);
     }
 
     return Results.StatusCode(StatusCodes.Status501NotImplemented);
