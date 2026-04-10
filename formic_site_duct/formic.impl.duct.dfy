@@ -143,16 +143,16 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo, db: Database?) { LandingPagePre(u) }
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
-      reads if db == null then {} else {db}
+    predicate PreCondition(u: UserInfo, db: Database) { LandingPagePre(u, db) }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
+      reads db
     {
-      LandingPagePost(u, payload)
+      LandingPagePost(u, payload, db)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
-      modifies this, if db == null then {} else {db}
+      modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
       var status := if ctx.authenticated then "Signed in" else "Anonymous";
@@ -466,16 +466,16 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo, db: Database?) { true }
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
-      reads if db == null then {} else {db}
+    predicate PreCondition(u: UserInfo, db: Database) { true }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
+      reads db
     {
-      LoginPost(u, payload)
+      LoginPost(u, payload, db)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
-      modifies this, if db == null then {} else {db}
+      modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
       payload := ReturnType.ChallengeGoogle("/");
@@ -486,16 +486,16 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo, db: Database?) { true }
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
-      reads if db == null then {} else {db}
+    predicate PreCondition(u: UserInfo, db: Database) { true }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
+      reads db
     {
-      SecurePost(u, payload)
+      SecurePost(u, payload, db)
     }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
-      modifies this, if db == null then {} else {db}
+      modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
       if ctx.authenticated {
@@ -537,11 +537,9 @@ module DuctImpl {
 
     constructor () {}
 
-    predicate PreCondition(u: UserInfo, db: Database?) {
-      !(u.authenticated && u.email != "") || db != null
-    }
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
-      reads if db == null then {} else {db}
+    predicate PreCondition(u: UserInfo, db: Database) { true }
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
+      reads db
     {
       SaveUserPost(u, payload, db)
     }
@@ -549,7 +547,6 @@ module DuctImpl {
     method AddPersistedUser(ctx: UserInfo)
       requires ctx.authenticated
       requires ctx.email != ""
-      requires db != null
       modifies this, db
       ensures SaveUserDbPost(ctx, db)
     {
@@ -559,21 +556,16 @@ module DuctImpl {
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
-      modifies this, if db == null then {} else {db}
+      modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
       if ctx.authenticated && ctx.email != "" {
-        assert db != null;
         AddPersistedUser(ctx);
-        payload := ReturnType.Content(
-          "<!doctype html><html lang=\"en\"><body><h1>Saved user</h1><p>" +
-          ctx.email +
-          "</p></body></html>");
+        payload := ReturnType.Redirect("/");
       } else {
         payload := ReturnType.ChallengeGoogle("/save_user");
       }
     }
-
   }
 
 }

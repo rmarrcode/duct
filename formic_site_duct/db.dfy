@@ -48,6 +48,7 @@ module DB {
   is reflected in actual DB
   */
   class Database {
+    
     var entries: seq<DbValue>
 
     constructor ()

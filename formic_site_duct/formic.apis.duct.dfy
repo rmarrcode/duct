@@ -8,7 +8,6 @@ module DuctApis {
         static method Endpoints() returns (all: AllApiEndpoints)
         {
             var catalog := new AllApiEndpoints();
-            var appDb := new Database();
 
             var formic_landing := new FormicLandingPage();
             var home := new ApiEndpoint("/", ReturnType.Content(""), formic_landing);
@@ -19,7 +18,6 @@ module DuctApis {
             catalog.Add(login);
 
             var save_user_page := new SaveUserPage();
-            save_user_page.SetDb(appDb);
             var save_user := new ApiEndpoint("/save_user", ReturnType.Content(""), save_user_page);
             catalog.Add(save_user);
 

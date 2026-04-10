@@ -4,7 +4,7 @@ module DuctSpecs {
   import opened SpecsTools
   import opened DB
 
-  predicate LandingPagePre(ctx: UserInfo)
+  predicate LandingPagePre(ctx: UserInfo, db: Database)
   {
     ctx.name != "" &&
     !Contains(ctx.name, "Signed in") &&
@@ -21,7 +21,8 @@ module DuctSpecs {
     !Contains(ctx.picture, Link("Sign in", "/login"))
   }
 
-  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType)
+  twostate predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
+    reads db
   {
     payload.Content? &&
     var html := payload.body;
@@ -37,12 +38,14 @@ module DuctSpecs {
        Contains(html, Link("Sign in", "/login"))))
   }
 
-  predicate LoginPost(ctx: UserInfo, payload: ReturnType) 
+  twostate predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database)
+    reads db
   {
     payload == ReturnType.ChallengeGoogle("/")
   }
 
-  predicate SecurePost(ctx: UserInfo, payload: ReturnType)
+  twostate predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
+    reads db
   {
     (ctx.authenticated ==>
       payload.Content? &&
@@ -55,23 +58,21 @@ module DuctSpecs {
     )
   }
 
-  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database?)
+  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database)
     requires ctx.authenticated
     requires ctx.email != ""
-    requires db != null
     reads db
   {
     var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
     db.entries == old(db.entries) + [saved]
   }
 
-  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database?)
-    reads if db == null then {} else {db}
+  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
+    reads db
   {
-    if ctx.authenticated && ctx.email != "" then
-      db != null &&
-      payload.Content? &&
-      SaveUserDbPost(ctx, db)
+    if ctx.authenticated then
+      SaveUserDbPost(ctx, db) &&
+      payload == ReturnType.Redirect("/")
     else
       payload == ReturnType.ChallengeGoogle("/save_user")
   }

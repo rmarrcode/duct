@@ -11,10 +11,11 @@ module DuctTools {
   datatype ReturnType = 
     Content(body: string)
   | ChallengeGoogle(returnUrl: string)
-  | Redirect
+  | Redirect(url: string)
 
   trait {:termination false} IGenerator {
-    var db: Database?
+
+    var db: Database
 
     method SetDb(db: Database)
       modifies this
@@ -23,13 +24,13 @@ module DuctTools {
       this.db := db;
     }
 
-    predicate PreCondition(u: UserInfo, db: Database?)
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database?)
-      reads if db == null then {} else {db}
+    predicate PreCondition(u: UserInfo, db: Database)
+    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
+      reads db
 
     method Generate(user: UserInfo) returns (payload: ReturnType)
       requires PreCondition(user, db)
-      modifies this, if db == null then {} else {db}
+      modifies this, db
       ensures PostCondition(user, payload, db)
   }
 
