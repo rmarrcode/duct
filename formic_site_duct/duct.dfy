@@ -25,6 +25,7 @@ module DuctTools {
     }
 
     predicate PreCondition(u: UserInfo, db: Database)
+
     twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
       reads db
 

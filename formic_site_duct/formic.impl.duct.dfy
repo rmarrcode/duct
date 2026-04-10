@@ -538,6 +538,7 @@ module DuctImpl {
     constructor () {}
 
     predicate PreCondition(u: UserInfo, db: Database) { true }
+
     twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
       reads db
     {
@@ -566,6 +567,7 @@ module DuctImpl {
         payload := ReturnType.ChallengeGoogle("/save_user");
       }
     }
+    
   }
 
 }

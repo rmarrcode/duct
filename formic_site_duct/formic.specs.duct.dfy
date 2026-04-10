@@ -4,7 +4,7 @@ module DuctSpecs {
   import opened SpecsTools
   import opened DB
 
-  predicate LandingPagePre(ctx: UserInfo, db: Database)
+  predicate LandingPagePre(ctx: UserInfo)
   {
     ctx.name != "" &&
     !Contains(ctx.name, "Signed in") &&
@@ -21,8 +21,7 @@ module DuctSpecs {
     !Contains(ctx.picture, Link("Sign in", "/login"))
   }
 
-  twostate predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
+  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType)
   {
     payload.Content? &&
     var html := payload.body;
@@ -38,14 +37,12 @@ module DuctSpecs {
        Contains(html, Link("Sign in", "/login"))))
   }
 
-  twostate predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
+  predicate LoginPost(ctx: UserInfo, payload: ReturnType) 
   {
     payload == ReturnType.ChallengeGoogle("/")
   }
 
-  twostate predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
+  predicate SecurePost(ctx: UserInfo, payload: ReturnType)
   {
     (ctx.authenticated ==>
       payload.Content? &&
@@ -58,16 +55,17 @@ module DuctSpecs {
     )
   }
 
-  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database)
+  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database?)
     requires ctx.authenticated
     requires ctx.email != ""
+    requires db != null
     reads db
   {
     var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
     db.entries == old(db.entries) + [saved]
   }
 
-  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
+  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database?)
     reads db
   {
     if ctx.authenticated then
