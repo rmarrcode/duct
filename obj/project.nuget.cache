@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "MpbLoWuzKLkufY6BSMVd1YT1B1g5eK4LdkIU2rJXyoHl+33ruAwQUIAUPs8X7HnPE5FhE7ZJ2DPiPsQgB9wQRg==",
+  "dgSpecHash": "6VXSxJYjkg/rAJxYRiJ9eVLfcIo8ubrkNp3owdkea9dICTQPcZpgLuQ76BN70fQr0+ydSXJIGIy1X0lvLeilYA==",
   "success": true,
   "projectFilePath": "/home/ryan-marr/Documents/secret/duct_env/duct/yaml_to_row_datatype.csproj",
   "expectedPackageFiles": [

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("yaml_to_row_datatype")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34c9ee2b4787f6633863790902ef957370c18f7c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b414678a0039432ded88fd351c7eabdadebfb4f5")]
 [assembly: System.Reflection.AssemblyProductAttribute("yaml_to_row_datatype")]
 [assembly: System.Reflection.AssemblyTitleAttribute("yaml_to_row_datatype")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

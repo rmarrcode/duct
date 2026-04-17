@@ -90,6 +90,7 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
 static IResult ReturnResponse(IGenerator generator, DuctTools._IUserInfo user)
 {
     _IReturnType payload = generator.Generate(user);
+    DuctDbBridge.PersistDatabase(generator.db);
 
     if (payload.is_Content)
     {

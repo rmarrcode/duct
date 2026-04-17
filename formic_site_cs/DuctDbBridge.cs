@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Numerics;
 using System.Reflection;
 using System.Text.Json;
@@ -13,6 +14,34 @@ public static class DuctDbBridge
     {
         WriteIndented = false
     };
+    private static readonly object SyncLock = new();
+    private static readonly ConditionalWeakTable<DB.Database, SyncState> SyncStates = new();
+
+    private sealed class SyncState
+    {
+        public int SyncedCount { get; set; }
+    }
+
+    public static void PersistDatabase(DB.Database? db)
+    {
+        if (db is null)
+        {
+            return;
+        }
+
+        lock (SyncLock)
+        {
+            SyncState state = SyncStates.GetOrCreateValue(db);
+            int totalEntries = db.entries.Count;
+
+            for (int i = state.SyncedCount; i < totalEntries; i++)
+            {
+                Persist(db, db.entries.Select(i));
+            }
+
+            state.SyncedCount = totalEntries;
+        }
+    }
 
     public static void Persist(object db, object value)
     {

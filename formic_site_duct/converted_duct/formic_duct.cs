@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs formic_site_duct/formic.impl.duct.dfy formic_site_duct/formic.apis.duct.dfy formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
@@ -408,7 +408,7 @@ module DuctImpl {
       ensures PostCondition(ctx, payload, db)
       decreases ctx
     {
-      payload := ReturnType.ChallengeGoogle(""/"");
+      payload := ReturnType.ChallengeGoogle(""/save_user"");
     }
   }
 
@@ -483,17 +483,6 @@ module DuctImpl {
       SaveUserPost(u, payload, db)
     }
 
-    method AddPersistedUser(ctx: UserInfo)
-      requires ctx.authenticated
-      requires ctx.email != """"
-      modifies this, db
-      ensures SaveUserDbPost(ctx, db)
-      decreases ctx
-    {
-      var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-      db.Save(saved);
-    }
-
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
       modifies this, db
@@ -501,7 +490,8 @@ module DuctImpl {
       decreases ctx
     {
       if ctx.authenticated && ctx.email != """" {
-        AddPersistedUser(ctx);
+        var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+        db.entries := db.entries + [saved];
         payload := ReturnType.Redirect(""/"");
       } else {
         payload := ReturnType.ChallengeGoogle(""/save_user"");
@@ -523,9 +513,11 @@ module DuctApis {
       var catalog := new AllApiEndpoints();
       var appDb := new Database();
       var formic_landing := new FormicLandingPage();
+      formic_landing.SetDb(appDb);
       var home := new ApiEndpoint(""/"", ReturnType.Content(""""), formic_landing);
       catalog.Add(home);
       var login_page := new LoginChallengePage();
+      login_page.SetDb(appDb);
       var login := new ApiEndpoint(""/login"", ReturnType.ChallengeGoogle(""/""), login_page);
       catalog.Add(login);
       var save_user_page := new SaveUserPage();
@@ -533,6 +525,7 @@ module DuctApis {
       var save_user := new ApiEndpoint(""/save_user"", ReturnType.Content(""""), save_user_page);
       catalog.Add(save_user);
       var secure_page := new SecurePage();
+      secure_page.SetDb(appDb);
       var secure := new ApiEndpoint(""/secure"", ReturnType.Content(""""), secure_page);
       catalog.Add(secure);
       all := catalog;
@@ -662,24 +655,21 @@ module DuctSpecs {
     !Contains(ctx.picture, Link(""Sign in"", ""/login""))
   }
 
-  twostate predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
-    decreases {db}, ctx, payload, db
+  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
+    decreases ctx, payload, db
   {
     payload.Content? &&
-    ghost var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
+    var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
   }
 
-  twostate predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
-    decreases {db}, ctx, payload, db
+  predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database)
+    decreases ctx, payload, db
   {
-    payload == ReturnType.ChallengeGoogle(""/"")
+    payload == ReturnType.ChallengeGoogle(""/save_user"")
   }
 
-  twostate predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
-    decreases {db}, ctx, payload, db
+  predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
+    decreases ctx, payload, db
   {
     (ctx.authenticated ==>
       payload.Content? &&
@@ -690,22 +680,13 @@ module DuctSpecs {
       Contains(payload.body, ""You are not authenticated""))
   }
 
-  twostate predicate SaveUserDbPost(ctx: UserInfo, db: Database)
-    requires ctx.authenticated
-    requires ctx.email != """"
-    reads db
-    decreases {db}, ctx, db
-  {
-    ghost var saved: DbValue := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-    db.entries == old(db.entries) + [saved]
-  }
-
   twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
     reads db
     decreases {db}, ctx, payload, db
   {
-    if ctx.authenticated then
-      SaveUserDbPost(ctx, db) &&
+    if ctx.authenticated && ctx.email != """" then
+      ghost var saved: DbValue := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+      saved in db.entries &&
       payload == ReturnType.Redirect(""/"")
     else
       payload == ReturnType.ChallengeGoogle(""/save_user"")
@@ -719,10 +700,6 @@ module DuctSpecs {
 }
 
 module DB {
-  method {:extern ""DuctDbBridge"", ""Persist""} {:axiom} Persist(db: Database, value: DbValue)
-    ensures db.entries == old(db.entries)
-    decreases db, value
-
   datatype DbTimestamp = DbTimestamp(value: string)
 
   datatype OptionalDbTimestamp = MissingTimestamp | PresentTimestamp(value: DbTimestamp)
@@ -744,15 +721,6 @@ module DB {
       ensures entries == []
     {
       entries := [];
-    }
-
-    method Save(value: DbValue)
-      modifies this
-      ensures entries == old(entries) + [value]
-      decreases value
-    {
-      entries := entries + [value];
-      Persist(this, value);
     }
   }
 }
@@ -7149,11 +7117,6 @@ namespace DB {
     {
       (this).entries = Dafny.Sequence<DB._IDbValue>.FromElements();
     }
-    public void Save(DB._IDbValue @value)
-    {
-      (this).entries = Dafny.Sequence<DB._IDbValue>.Concat(this.entries, Dafny.Sequence<DB._IDbValue>.FromElements(@value));
-      DuctDbBridge.Persist(this, @value);
-    }
   }
 } // end of namespace DB
 namespace DuctTools {
@@ -7443,6 +7406,25 @@ namespace DuctSpecs {
     {
       return ((((((((((((!((ctx).dtor_name).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))));
     }
+    public static bool LandingPagePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    {
+      var _pat_let_tv0 = ctx;
+      var _pat_let_tv1 = ctx;
+      var _pat_let_tv2 = ctx;
+      var _pat_let_tv3 = ctx;
+      var _pat_let_tv4 = ctx;
+      var _pat_let_tv5 = ctx;
+      var _pat_let_tv6 = ctx;
+      return ((payload).is_Content) && (Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>((payload).dtor_body, _pat_let0_0 => Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>(_pat_let0_0, _0_html => (((((!(_0_html).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (SpecsTools.__default.Contains(_0_html, (_pat_let_tv0).dtor_name))) && ((((_pat_let_tv1).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv2).dtor_email)))) && ((((_pat_let_tv3).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv4).dtor_picture)))) && (((_pat_let_tv5).dtor_authenticated) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"))))))) && ((!((_pat_let_tv6).dtor_authenticated)) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))))));
+    }
+    public static bool LoginPost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    {
+      return object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")));
+    }
+    public static bool SecurePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    {
+      return (!((ctx).dtor_authenticated) || ((((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, (ctx).dtor_name))) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated"))))) && (!(!((ctx).dtor_authenticated)) || (((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are not authenticated")))));
+    }
   }
 } // end of namespace DuctSpecs
 namespace DuctImpl {
@@ -7622,7 +7604,7 @@ namespace DuctImpl {
     public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
     {
       DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
-      payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"));
+      payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
       return payload;
     }
   }
@@ -7705,17 +7687,14 @@ namespace DuctImpl {
     {
       return true;
     }
-    public void AddPersistedUser(DuctTools._IUserInfo ctx)
-    {
-      DB._IDbValue _0_saved;
-      _0_saved = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
-      (this.db).Save(_0_saved);
-    }
     public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
     {
       DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
       if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
-        (this).AddPersistedUser(ctx);
+        DB._IDbValue _0_saved;
+        _0_saved = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
+        DB.Database _obj0 = this.db;
+        _obj0.entries = Dafny.Sequence<DB._IDbValue>.Concat(this.db.entries, Dafny.Sequence<DB._IDbValue>.FromElements(_0_saved));
         payload = DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"));
       } else {
         payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
@@ -7745,6 +7724,7 @@ namespace DuctApis {
       DuctImpl.FormicLandingPage _nw2 = new DuctImpl.FormicLandingPage();
       _nw2.__ctor();
       _2_formic__landing = _nw2;
+      (_2_formic__landing).SetDb(_1_appDb);
       DuctTools.ApiEndpoint _3_home;
       DuctTools.ApiEndpoint _nw3 = new DuctTools.ApiEndpoint();
       _nw3.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _2_formic__landing);
@@ -7754,6 +7734,7 @@ namespace DuctApis {
       DuctImpl.LoginChallengePage _nw4 = new DuctImpl.LoginChallengePage();
       _nw4.__ctor();
       _4_login__page = _nw4;
+      (_4_login__page).SetDb(_1_appDb);
       DuctTools.ApiEndpoint _5_login;
       DuctTools.ApiEndpoint _nw5 = new DuctTools.ApiEndpoint();
       _nw5.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")), _4_login__page);
@@ -7773,6 +7754,7 @@ namespace DuctApis {
       DuctImpl.SecurePage _nw8 = new DuctImpl.SecurePage();
       _nw8.__ctor();
       _8_secure__page = _nw8;
+      (_8_secure__page).SetDb(_1_appDb);
       DuctTools.ApiEndpoint _9_secure;
       DuctTools.ApiEndpoint _nw9 = new DuctTools.ApiEndpoint();
       _nw9.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _8_secure__page);

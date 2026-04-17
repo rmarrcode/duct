@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "TnGu3obRVCeAv9QxncbWevShY1gjNF5WfhSHxpzWnNijiqKh9Zq7PPCr6eLGGsl5j7XR6G6Bp94ZUWReuadm0g==",
+  "dgSpecHash": "bOlWHgSj/YETCM33yNHHHd04he+Sm8LocvuinhjnNolQG9mJGf7aAMms6k/9pqN1mbXROGcWiG+M8AxTs4uYig==",
   "success": true,
   "projectFilePath": "/home/ryan-marr/Documents/secret/duct_env/duct/dafny_test/Demo1.csproj",
   "expectedPackageFiles": [

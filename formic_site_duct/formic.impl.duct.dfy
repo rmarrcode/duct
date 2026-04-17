@@ -478,7 +478,7 @@ module DuctImpl {
       modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
-      payload := ReturnType.ChallengeGoogle("/");
+      payload := ReturnType.ChallengeGoogle("/save_user");
     }
   }
 
@@ -545,15 +545,6 @@ module DuctImpl {
       SaveUserPost(u, payload, db)
     }
 
-    method AddPersistedUser(ctx: UserInfo)
-      requires ctx.authenticated
-      requires ctx.email != ""
-      modifies this, db
-      ensures SaveUserDbPost(ctx, db)
-    {
-      var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-      db.Save(saved);
-    }
 
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
@@ -561,7 +552,8 @@ module DuctImpl {
       ensures PostCondition(ctx, payload, db)
     {
       if ctx.authenticated && ctx.email != "" {
-        AddPersistedUser(ctx);
+        var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+        db.entries := db.entries + [saved];
         payload := ReturnType.Redirect("/");
       } else {
         payload := ReturnType.ChallengeGoogle("/save_user");

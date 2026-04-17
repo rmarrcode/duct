@@ -48,7 +48,7 @@ module DB {
   is reflected in actual DB
   */
   class Database {
-    
+
     var entries: seq<DbValue>
 
     constructor ()
@@ -56,16 +56,8 @@ module DB {
     {
       entries := [];
     }
-
-    method Save(value: DbValue)
-      modifies this
-      ensures entries == old(entries) + [value]
-    {
-      entries := entries + [value];
-      Persist(this, value);
-    }
   }
 
-  method {:extern "DuctDbBridge", "Persist"} {:axiom} Persist(db: Database, value: DbValue)
-    ensures db.entries == old(db.entries)
+  //method {:extern "DuctDbBridge", "Persist"} {:axiom} Persist(db: Database, value: DbValue)
+    //ensures db.entries == old(db.entries)
 }
