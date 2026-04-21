@@ -551,9 +551,10 @@ module DuctImpl {
       modifies this, db
       ensures PostCondition(ctx, payload, db)
     {
+      var ops := SaveUserOperations(ctx);
+      db.ApplyOperations(ops);
+
       if ctx.authenticated && ctx.email != "" {
-        var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-        db.entries := db.entries + [saved];
         payload := ReturnType.Redirect("/");
       } else {
         payload := ReturnType.ChallengeGoogle("/save_user");

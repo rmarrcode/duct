@@ -13,6 +13,9 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Load user secrets even when not in Development so local runs still pick up credentials.
 builder.Configuration.AddUserSecrets<Program>(optional: true);
+DuctDbBridge.Configure(
+    builder.Configuration.GetConnectionString("DuctDb")
+    ?? throw new InvalidOperationException("ConnectionStrings:DuctDb is not configured."));
 
 IConfigurationSection googleSection = builder.Configuration.GetSection("Authentication:Google");
 builder.Services.Configure<GoogleOptions>(GoogleDefaults.AuthenticationScheme, googleSection);

@@ -55,14 +55,25 @@ module DuctSpecs {
     )
   }
 
+  function {:compile true} SaveUserOperations(ctx: UserInfo): seq<DbChange>
+  {
+    if ctx.authenticated && ctx.email != "" then
+      [DbChange.Put(DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture)))]
+    else
+      []
+  }
+
   twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
     reads db
   {
+    var ops := SaveUserOperations(ctx);
     if ctx.authenticated && ctx.email != "" then
-      var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-      saved in db.entries &&
+      db.entries == ExecuteOperations(old(db.entries), ops) &&
+      db.operations == old(db.operations) + ops &&
       payload == ReturnType.Redirect("/")
     else
+      db.entries == ExecuteOperations(old(db.entries), ops) &&
+      db.operations == old(db.operations) + ops &&
       payload == ReturnType.ChallengeGoogle("/save_user")
   }
 
