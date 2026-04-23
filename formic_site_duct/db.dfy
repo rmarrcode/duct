@@ -37,6 +37,12 @@ module DB {
     last_seen_at: DbTimestamp
   )
 
+  datatype Table =
+    PersistedUserTable
+  | FormicUserTable
+  | LaunchTokenTable
+  | SessionTable
+
   datatype DbValue =
     DbPersistedUser(persistedUser: PersistedUser)
   | DbFormicUser(formicUser: UserCreds)
@@ -53,6 +59,45 @@ module DB {
     Put(row: DbValue)
   | Edit(key: DbKey, newValue: DbValue)
   | Delete(key: DbKey)
+
+  datatype Patch =
+    ReplaceWith(row: DbValue)
+
+  datatype DbPred =
+    TruePred
+  | FalsePred
+  | HasKeyPred(key: DbKey)
+  | TableHasAnyPred(table: Table)
+  | TableHasKeyPred(table: Table, key: DbKey)
+  | NotPred(pred: DbPred)
+  | AndPred(left: DbPred, right: DbPred)
+  | OrPred(left: DbPred, right: DbPred)
+
+  datatype DbQuery =
+    AllRows
+  | RowsInTable(table: Table)
+  | RowWithKey(key: DbKey)
+  | RowsMatching(pred: DbPred)
+
+  datatype DbProgram =
+    Return
+  | Seq(p1: DbProgram, p2: DbProgram)
+  | Lookup(table: Table, key: DbKey)
+  | Exists(table: Table, pred: DbPred)
+  | Insert(row: DbValue)
+  | Update(key: DbKey, patch: Patch)
+  | DeleteRow(key: DbKey)
+  | If(cond: DbPred, thenP: DbProgram, elseP: DbProgram)
+  | ForEach(query: DbQuery, body: DbProgram)
+
+  function {:compile true} TableOf(row: DbValue): Table
+  {
+    match row
+    case DbPersistedUser(_) => PersistedUserTable
+    case DbFormicUser(_) => FormicUserTable
+    case DbLaunchToken(_) => LaunchTokenTable
+    case DbSession(_) => SessionTable
+  }
 
   function {:compile true} KeyOf(row: DbValue): DbKey
   {
@@ -82,17 +127,113 @@ module DB {
       [entries[0]] + FilterEntries(entries[1..], key)
   }
 
+  function {:compile true} HasKey(entries: seq<DbValue>, key: DbKey): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      KeyOf(entries[0]) == key || HasKey(entries[1..], key)
+  }
+
+  function {:compile true} TableHasAny(entries: seq<DbValue>, table: Table): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      TableOf(entries[0]) == table || TableHasAny(entries[1..], table)
+  }
+
+  function {:compile true} TableHasKey(entries: seq<DbValue>, table: Table, key: DbKey): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      (TableOf(entries[0]) == table && KeyOf(entries[0]) == key)
+      || TableHasKey(entries[1..], table, key)
+  }
+
+  function {:compile true} RowsForTable(entries: seq<DbValue>, table: Table): seq<DbValue>
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      []
+    else if TableOf(entries[0]) == table then
+      [entries[0]] + RowsForTable(entries[1..], table)
+    else
+      RowsForTable(entries[1..], table)
+  }
+
+  function {:compile true} RowsForKey(entries: seq<DbValue>, key: DbKey): seq<DbValue>
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      []
+    else if KeyOf(entries[0]) == key then
+      [entries[0]]
+    else
+      RowsForKey(entries[1..], key)
+  }
+
+  function {:compile true} EvalPred(entries: seq<DbValue>, pred: DbPred): bool
+  {
+    match pred
+    case TruePred => true
+    case FalsePred => false
+    case HasKeyPred(key) => HasKey(entries, key)
+    case TableHasAnyPred(table) => TableHasAny(entries, table)
+    case TableHasKeyPred(table, key) => TableHasKey(entries, table, key)
+    case NotPred(inner) => !EvalPred(entries, inner)
+    case AndPred(left, right) => EvalPred(entries, left) && EvalPred(entries, right)
+    case OrPred(left, right) => EvalPred(entries, left) || EvalPred(entries, right)
+  }
+
+  function {:compile true} EvalQuery(entries: seq<DbValue>, query: DbQuery): seq<DbValue>
+  {
+    match query
+    case AllRows => entries
+    case RowsInTable(table) => RowsForTable(entries, table)
+    case RowWithKey(key) => RowsForKey(entries, key)
+    case RowsMatching(pred) =>
+      if EvalPred(entries, pred) then entries else []
+  }
+
+  function ProgramSize(program: DbProgram): nat
+  {
+    match program
+    case Return => 1
+    case Seq(p1, p2) => 1 + ProgramSize(p1) + ProgramSize(p2)
+    case Lookup(_, _) => 1
+    case Exists(_, _) => 1
+    case Insert(_) => 1
+    case Update(_, _) => 1
+    case DeleteRow(_) => 1
+    case If(_, thenP, elseP) => 1 + ProgramSize(thenP) + ProgramSize(elseP)
+    case ForEach(_, body) => 1 + ProgramSize(body)
+  }
+
+  function {:compile true} PatchToChange(key: DbKey, patch: Patch): seq<DbChange>
+  {
+    match patch
+    case ReplaceWith(row) =>
+      if KeyOf(row) == key then [Edit(key, row)] else []
+  }
+
   function {:compile true} ExecuteOperation(entries: seq<DbValue>, change: DbChange): seq<DbValue>
-    requires ValidChange(change)
   {
     match change
     case Put(row) => FilterEntries(entries, KeyOf(row)) + [row]
-    case Edit(key, newValue) => FilterEntries(entries, key) + [newValue]
+    case Edit(key, newValue) =>
+      if key == KeyOf(newValue) then
+        FilterEntries(entries, key) + [newValue]
+      else
+        entries
     case Delete(key) => FilterEntries(entries, key)
   }
 
   function {:compile true} ExecuteOperations(entries: seq<DbValue>, changes: seq<DbChange>): seq<DbValue>
-    requires forall i :: 0 <= i < |changes| ==> ValidChange(changes[i])
     decreases |changes|
   {
     if |changes| == 0 then
@@ -101,41 +242,75 @@ module DB {
       ExecuteOperations(ExecuteOperation(entries, changes[0]), changes[1..])
   }
 
+  function {:compile true} ProgramOperationsForRows(entries: seq<DbValue>, rows: seq<DbValue>, body: DbProgram): seq<DbChange>
+    decreases ProgramSize(body), |rows|
+  {
+    if |rows| == 0 then
+      []
+    else
+      var ops := ProgramOperations(entries, body);
+      ops + ProgramOperationsForRows(ExecuteOperations(entries, ops), rows[1..], body)
+  }
+
+  function {:compile true} ProgramOperations(entries: seq<DbValue>, program: DbProgram): seq<DbChange>
+    decreases ProgramSize(program), 0
+  {
+    match program
+    case Return => []
+    case Seq(p1, p2) =>
+      var ops1 := ProgramOperations(entries, p1);
+      ops1 + ProgramOperations(ExecuteOperations(entries, ops1), p2)
+    case Lookup(_, _) => []
+    case Exists(_, _) => []
+    case Insert(row) => [Put(row)]
+    case Update(key, patch) => PatchToChange(key, patch)
+    case DeleteRow(key) => [Delete(key)]
+    case If(cond, thenP, elseP) =>
+      if EvalPred(entries, cond) then
+        ProgramOperations(entries, thenP)
+      else
+        ProgramOperations(entries, elseP)
+    case ForEach(query, body) =>
+      ProgramOperationsForRows(entries, EvalQuery(entries, query), body)
+  }
+
+  function {:compile true} ExecuteProgram(entries: seq<DbValue>, program: DbProgram): seq<DbValue>
+  {
+    ExecuteOperations(entries, ProgramOperations(entries, program))
+  }
+
   /*
   Goal of DB is to guarantee that any specifications made on entries
-  is reflected in actual DB.
+  is reflected in actual DB. The concrete runtime state is an append-only
+  log of DbChange values; Entries() is the as-if materialized view.
   */
   class Database {
 
-    var entries: seq<DbValue>
     var operations: seq<DbChange>
 
     constructor ()
-      ensures entries == []
       ensures operations == []
     {
-      entries := [];
       operations := [];
     }
 
-    method ApplyOperation(change: DbChange)
-      requires ValidChange(change)
-      modifies this
-      ensures entries == ExecuteOperation(old(entries), change)
-      ensures operations == old(operations) + [change]
+    ghost function Entries(): seq<DbValue>
+      reads this
     {
-      entries := ExecuteOperation(entries, change);
-      operations := operations + [change];
+      ExecuteOperations([], operations)
     }
 
     method ApplyOperations(changes: seq<DbChange>)
-      requires forall i :: 0 <= i < |changes| ==> ValidChange(changes[i])
       modifies this
-      ensures entries == ExecuteOperations(old(entries), changes)
       ensures operations == old(operations) + changes
     {
-      entries := ExecuteOperations(entries, changes);
       operations := operations + changes;
+    }
+
+    method GetOperations() returns (ops: seq<DbChange>)
+      ensures ops == operations
+    {
+      ops := operations;
     }
   }
 }

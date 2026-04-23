@@ -545,7 +545,6 @@ module DuctImpl {
       SaveUserPost(u, payload, db)
     }
 
-
     method Generate(ctx: UserInfo) returns (payload: ReturnType)
       requires PreCondition(ctx, db)
       modifies this, db

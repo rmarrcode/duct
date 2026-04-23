@@ -68,11 +68,11 @@ module DuctSpecs {
   {
     var ops := SaveUserOperations(ctx);
     if ctx.authenticated && ctx.email != "" then
-      db.entries == ExecuteOperations(old(db.entries), ops) &&
+      db.Entries() == ExecuteOperations(old(db.Entries()), ops) &&
       db.operations == old(db.operations) + ops &&
       payload == ReturnType.Redirect("/")
     else
-      db.entries == ExecuteOperations(old(db.entries), ops) &&
+      db.Entries() == ExecuteOperations(old(db.Entries()), ops) &&
       db.operations == old(db.operations) + ops &&
       payload == ReturnType.ChallengeGoogle("/save_user")
   }
