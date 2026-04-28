@@ -8,31 +8,40 @@ module DuctTools {
     picture: string,
     authenticated: bool)
 
-  datatype ReturnType = 
+  datatype RestReturnType = 
     Content(body: string)
   | ChallengeGoogle(returnUrl: string)
   | Redirect(url: string)
 
+  datatype ReturnType = 
+    RestReturnType
+  | seq<DbChange>
+
   trait {:termination false} IGenerator {
 
     var db: Database
+    method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
 
-    method SetDb(db: Database)
-      modifies this
-      ensures this.db == db
-    {
-      this.db := db;
+    predicate RestPreCondition(u: UserInfo, db: Database)
+    predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    predicate DbPreCondition(u: UserInfo, db_before: Database)
+    predicate PreCondition(u: UserInfo, db: Database) {
+      DbPreCondition(u, db)
     }
 
-    predicate PreCondition(u: UserInfo, db: Database)
+    // only one that spec defines 
+    predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      DbOpsCorrect(u, operations) &&
+      WellForned(operations)
+    }
 
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-
-    method Generate(user: UserInfo) returns (payload: ReturnType)
+    method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
       requires PreCondition(user, db)
-      modifies this, db
-      ensures PostCondition(user, payload, db)
+      ensures PostCondition(u, operations) 
   }
 
   class ApiEndpoint {

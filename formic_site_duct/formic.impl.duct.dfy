@@ -535,29 +535,12 @@ module DuctImpl {
 
   class SaveUserPage extends IGenerator {
 
-    constructor () {}
-
-    predicate PreCondition(u: UserInfo, db: Database) { true }
-
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-    {
-      SaveUserPost(u, payload, db)
+    predicate DbPreCondition(u, db_before) {
+      true
     }
 
-    method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx, db)
-      modifies this, db
-      ensures PostCondition(ctx, payload, db)
-    {
-      var ops := SaveUserOperations(ctx);
-      db.ApplyOperations(ops);
-
-      if ctx.authenticated && ctx.email != "" {
-        payload := ReturnType.Redirect("/");
-      } else {
-        payload := ReturnType.ChallengeGoogle("/save_user");
-      }
+    predicate DbPostCondition(u, db_before, db_after) {
+      SaveUserPost(u, db_before, db_after)
     }
     
   }

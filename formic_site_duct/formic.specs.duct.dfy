@@ -63,19 +63,13 @@ module DuctSpecs {
       []
   }
 
-  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
+  predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
   {
-    var ops := SaveUserOperations(ctx);
-    if ctx.authenticated && ctx.email != "" then
-      db.Entries() == ExecuteOperations(old(db.Entries()), ops) &&
-      db.operations == old(db.operations) + ops &&
+    if ctx.authenticated  then
+      db_after == db_before + ctx
       payload == ReturnType.Redirect("/")
     else
-      db.Entries() == ExecuteOperations(old(db.Entries()), ops) &&
-      db.operations == old(db.operations) + ops &&
       payload == ReturnType.ChallengeGoogle("/save_user")
   }
-
 
 }
