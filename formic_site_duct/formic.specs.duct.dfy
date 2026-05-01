@@ -60,14 +60,6 @@ module DuctSpecs {
       payload == ReturnType.ChallengeGoogle("/secure")
   }
 
-  function {:compile true} SaveUserOperations(ctx: UserInfo): seq<DbChange>
-  {
-    if ctx.authenticated && ctx.email != "" then
-      [DbChange.Put(DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture)))]
-    else
-      []
-  }
-
   predicate SaveUserPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
   {
     if ctx.authenticated && ctx.email != "" then

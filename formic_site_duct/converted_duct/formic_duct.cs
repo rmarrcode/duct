@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/db.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.specs.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/landing_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/login_challenge.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/save_user.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/secure_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs db.dfy duct.dfy formic.specs.duct.dfy implementations/landing_page.program.dfy implementations/login_challenge.program.dfy implementations/save_user.program.dfy implementations/secure_page.program.dfy formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output converted_duct/formic_duct
 // the_program
 
 
@@ -481,15 +481,6 @@ module DuctSpecs {
   {
     after == before &&
     if ctx.authenticated then payload.Content? && Contains(payload.body, ctx.name) && Contains(payload.body, ""You are authenticated"") else payload == ReturnType.ChallengeGoogle(""/secure"")
-  }
-
-  function {:compile true} SaveUserOperations(ctx: UserInfo): seq<DbChange>
-    decreases ctx
-  {
-    if ctx.authenticated && ctx.email != """" then
-      [DbChange.Put(DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture)))]
-    else
-      []
   }
 
   predicate SaveUserPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
@@ -9308,13 +9299,6 @@ namespace DuctSpecs {
     public static bool SecurePost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
       return ((after).Equals(before)) && ((((ctx).dtor_authenticated) ? ((((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, (ctx).dtor_name))) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated")))) : (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"))))));
-    }
-    public static Dafny.ISequence<DB._IDbChange> SaveUserOperations(DuctTools._IUserInfo ctx) {
-      if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
-        return Dafny.Sequence<DB._IDbChange>.FromElements(DB.DbChange.create_Put(DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture))));
-      } else {
-        return Dafny.Sequence<DB._IDbChange>.FromElements();
-      }
     }
     public static bool SaveUserPost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
