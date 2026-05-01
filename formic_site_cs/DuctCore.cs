@@ -61,6 +61,7 @@ app.UseAuthorization();
 
 // Endpoints supplied by Dafny. The host only attaches handlers.
 AllApiEndpoints catalog = Views.Endpoints();
+DB.Database appDb = new DB.Database();
 
 BigInteger endpointCount = catalog.Count();
 for (int i = 0; i < endpointCount; i++)
@@ -70,7 +71,7 @@ for (int i = 0; i < endpointCount; i++)
     app.MapGet(path, (HttpContext context) =>
     {
         _IUserInfo userInfo = ToDafnyUserInfo(context.User);
-        return ReturnResponse(ep.generator, userInfo);
+        return ReturnResponse(ep.generator, userInfo, appDb);
     });
 }
 
@@ -90,10 +91,10 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static IResult ReturnResponse(IGenerator generator, DuctTools._IUserInfo user)
+static IResult ReturnResponse(IGeneratorCore generator, DuctTools._IUserInfo user, DB.Database db)
 {
-    _IReturnType payload = generator.Generate(user);
-    DuctDbBridge.PersistDatabase(generator.db);
+    generator.Generate(user, out _IReturnType payload, out DB._IDbProgram program);
+    DuctDbBridge.ExecuteProgram(db, program);
 
     if (payload.is_Content)
     {

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Numerics;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Text.Json;
 using Dafny;
@@ -29,6 +30,24 @@ public static class DuctDbBridge
             : connectionString;
     }
 
+    public static void ExecuteProgram(DB.Database? db, DB._IDbProgram? program)
+    {
+        if (db is null || program is null)
+        {
+            return;
+        }
+
+        lock (SyncLock)
+        {
+            Dafny.ISequence<DB._IDbValue> entries =
+                DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, db.operations);
+            Dafny.ISequence<DB._IDbChange> changes = DB.__default.ProgramOperations(entries, program);
+
+            db.ApplyOperations(changes);
+            PersistUnsyncedOperations(db);
+        }
+    }
+
     public static void PersistDatabase(DB.Database? db)
     {
         if (db is null)
@@ -38,16 +57,32 @@ public static class DuctDbBridge
 
         lock (SyncLock)
         {
-            SyncState state = SyncStates.GetOrCreateValue(db);
-            int totalEntries = db.entries.Count;
-
-            for (int i = state.SyncedCount; i < totalEntries; i++)
-            {
-                Persist(db, db.entries.Select(i));
-            }
-
-            state.SyncedCount = totalEntries;
+            PersistUnsyncedOperations(db);
         }
+    }
+
+    private static void PersistUnsyncedOperations(DB.Database db)
+    {
+        SyncState state = SyncStates.GetOrCreateValue(db);
+        int totalOperations = db.operations.Count;
+        int syncedCount = state.SyncedCount;
+
+        for (int i = state.SyncedCount; i < totalOperations; i++)
+        {
+            try
+            {
+                Persist(db, db.operations.Select(new BigInteger(i)));
+                syncedCount++;
+            }
+            catch (NpgsqlException ex) when (ex.InnerException is SocketException)
+            {
+                Console.Error.WriteLine(
+                    $"Duct DB persistence unavailable; {totalOperations - i} operation(s) remain queued. {ex.Message}");
+                break;
+            }
+        }
+
+        state.SyncedCount = syncedCount;
     }
 
     public static void Persist(object db, object value)

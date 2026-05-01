@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/db.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.specs.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/landing_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/login_challenge.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/save_user.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/secure_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs db.dfy duct.dfy formic.specs.duct.dfy implementations/landing_page.program.dfy implementations/login_challenge.program.dfy implementations/save_user.program.dfy implementations/secure_page.program.dfy formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output converted_duct/formic_duct
 // the_program
 
 

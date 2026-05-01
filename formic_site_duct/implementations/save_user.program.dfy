@@ -1,27 +1,12 @@
-module DuctDbImpl {
+module DuctSaveUserImpl {
 
   import opened DB
   import opened DuctTools
   import opened DuctSpecs
 
-  trait {:termination false} SaveUserPageSpec extends IGeneratorCore {
-
-    predicate PreCondition(u: UserInfo)
-    {
-      true
-    }
-
-    ghost predicate PostCondition(
-      u: UserInfo,
-      before: seq<DbValue>,
-      payload: ReturnType,
-      after: seq<DbValue>)
-    {
-      SaveUserPost(u, before, payload, after)
-    }
-  }
-
   class SaveUserPage extends SaveUserPageSpec {
+
+    constructor () {}
 
     function Response(u: UserInfo): ReturnType
     {
@@ -68,5 +53,4 @@ module DuctDbImpl {
       }
     }
   }
-
 }

@@ -3,14 +3,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$SCRIPT_DIR/converted_duct"
-SRC1="$SCRIPT_DIR/duct.dfy"
-SRC2="$SCRIPT_DIR/formic.impl.duct.dfy"
-SRC3="$SCRIPT_DIR/formic.apis.duct.dfy"
+SRC_DB="$SCRIPT_DIR/db.dfy"
+SRC_DUCT="$SCRIPT_DIR/duct.dfy"
+SRC_SPECS="$SCRIPT_DIR/formic.specs.duct.dfy"
+SRC_APIS="$SCRIPT_DIR/formic.apis.duct.dfy"
+mapfile -t IMPLEMENTATIONS < <(find "$SCRIPT_DIR/implementations" -maxdepth 1 -name '*.program.dfy' | sort)
 
 mkdir -p "$OUT_DIR"
 
-echo "Generating C# from $SRC2 and $SRC3 (with $SRC1) into $OUT_DIR ..."
-"${DAFNY:-dafny}" translate cs "$SRC2" "$SRC3" "$SRC1" \
+echo "Generating C# from Dafny sources into $OUT_DIR ..."
+"${DAFNY:-dafny}" translate cs "$SRC_DB" "$SRC_DUCT" "$SRC_SPECS" "${IMPLEMENTATIONS[@]}" "$SRC_APIS" \
   --no-verify \
   --allow-warnings \
   --include-runtime \
