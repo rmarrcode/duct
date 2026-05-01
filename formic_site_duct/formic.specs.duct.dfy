@@ -4,7 +4,7 @@ module DuctSpecs {
   import opened SpecsTools
   import opened DB
 
-  predicate LandingPagePre(ctx: UserInfo, db: Database)
+  predicate LandingPagePre(ctx: UserInfo)
   {
     ctx.name != "" &&
     !Contains(ctx.name, "Signed in") &&
@@ -21,7 +21,7 @@ module DuctSpecs {
     !Contains(ctx.picture, Link("Sign in", "/login"))
   }
 
-  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
+  predicate LandingPagePayloadPost(ctx: UserInfo, payload: ReturnType)
   {
     payload.Content? &&
     var html := payload.body;
@@ -37,22 +37,27 @@ module DuctSpecs {
        Contains(html, Link("Sign in", "/login"))))
   }
 
-  predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database) 
+  predicate LandingPagePost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
   {
-    payload == ReturnType.ChallengeGoogle("/save_user")
+    LandingPagePayloadPost(ctx, payload) &&
+    after == before
   }
 
-  predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
+  predicate LoginPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
   {
-    (ctx.authenticated ==>
+    payload == ReturnType.ChallengeGoogle("/save_user") &&
+    after == before
+  }
+
+  predicate SecurePost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+  {
+    after == before &&
+    if ctx.authenticated then
       payload.Content? &&
-      Contains(payload.body, ctx.name) && 
+      Contains(payload.body, ctx.name) &&
       Contains(payload.body, "You are authenticated")
-    ) &&
-    (!ctx.authenticated ==>
-      payload.Content? &&
-      Contains(payload.body, "You are not authenticated")
-    )
+    else
+      payload == ReturnType.ChallengeGoogle("/secure")
   }
 
   function {:compile true} SaveUserOperations(ctx: UserInfo): seq<DbChange>
@@ -63,13 +68,83 @@ module DuctSpecs {
       []
   }
 
-  predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+  predicate SaveUserPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
   {
-    if ctx.authenticated  then
-      db_after == db_before + ctx
-      payload == ReturnType.Redirect("/")
+    if ctx.authenticated && ctx.email != "" then
+      var row := DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+      payload == Redirect("/") &&
+      after == FilterEntries(before, PersistedUserKey(ctx.email)) + [row]
     else
-      payload == ReturnType.ChallengeGoogle("/save_user")
+      payload == ChallengeGoogle("/save_user") &&
+      after == before
+  }
+
+  trait {:termination false} LandingPageSpec extends IGeneratorCore {
+
+    predicate PreCondition(u: UserInfo)
+    {
+      LandingPagePre(u)
+    }
+
+    ghost predicate PostCondition(
+      u: UserInfo,
+      before: seq<DbValue>,
+      payload: ReturnType,
+      after: seq<DbValue>)
+    {
+      LandingPagePost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} LoginChallengePageSpec extends IGeneratorCore {
+
+    predicate PreCondition(u: UserInfo)
+    {
+      true
+    }
+
+    ghost predicate PostCondition(
+      u: UserInfo,
+      before: seq<DbValue>,
+      payload: ReturnType,
+      after: seq<DbValue>)
+    {
+      LoginPost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} SaveUserPageSpec extends IGeneratorCore {
+
+    predicate PreCondition(u: UserInfo)
+    {
+      true
+    }
+
+    ghost predicate PostCondition(
+      u: UserInfo,
+      before: seq<DbValue>,
+      payload: ReturnType,
+      after: seq<DbValue>)
+    {
+      SaveUserPost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} SecurePageSpec extends IGeneratorCore {
+
+    predicate PreCondition(u: UserInfo)
+    {
+      true
+    }
+
+    ghost predicate PostCondition(
+      u: UserInfo,
+      before: seq<DbValue>,
+      payload: ReturnType,
+      after: seq<DbValue>)
+    {
+      SecurePost(u, before, payload, after)
+    }
   }
 
 }

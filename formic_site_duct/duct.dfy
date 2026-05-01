@@ -8,48 +8,195 @@ module DuctTools {
     picture: string,
     authenticated: bool)
 
-  datatype RestReturnType = 
+  datatype ReturnType = 
     Content(body: string)
   | ChallengeGoogle(returnUrl: string)
   | Redirect(url: string)
 
-  datatype ReturnType = 
-    RestReturnType
-  | seq<DbChange>
+  trait IGeneratorSpec {
 
-  trait {:termination false} IGenerator {
+    predicate PreCondition(u: UserInfo)
 
-    var db: Database
-    method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
-
-    predicate RestPreCondition(u: UserInfo, db: Database)
-    predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
-
-    predicate DbPreCondition(u: UserInfo, db_before: Database)
-    predicate PreCondition(u: UserInfo, db: Database) {
-      DbPreCondition(u, db)
-    }
-
-    // only one that spec defines 
-    predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
-    predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
-      forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
-    predicate PostCondition(u: UserInfo, operations: DbProgram) {
-      DbOpsCorrect(u, operations) &&
-      WellForned(operations)
-    }
-
-    method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
-      requires PreCondition(user, db)
-      ensures PostCondition(u, operations) 
+    ghost predicate PostCondition(
+      u: UserInfo,
+      before: seq<DbValue>,
+      payload: ReturnType,
+      after: seq<DbValue>)
   }
+
+  trait {:termination false} IGeneratorCore extends IGeneratorSpec {
+
+    function Program(u: UserInfo): DbProgram
+    function Response(u: UserInfo): ReturnType
+
+    ghost predicate ImplementationCorrect(u: UserInfo)
+    {
+      forall before: seq<DbValue> ::
+        PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u)))
+    }
+
+    ghost predicate GeneratePost(
+      u: UserInfo,
+      payload: ReturnType,
+      prog: DbProgram)
+    {
+      payload == Response(u) &&
+      prog == Program(u) &&
+      forall before: seq<DbValue> ::
+        PostCondition(u, before, payload, ExecuteProgram(before, prog))
+    }
+
+    method Generate(u: UserInfo) returns (payload: ReturnType, prog: DbProgram)
+      requires PreCondition(u)
+      ensures payload == Response(u)
+      ensures prog == Program(u)
+    {
+      payload := Response(u);
+      prog := Program(u);
+    }
+  }
+
+  //trait {:termination false} IGenerator {
+
+    //var db: Database
+    //method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
+
+    //predicate RestPreCondition(u: UserInfo, db: Database)
+    //predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    //predicate DbPreCondition(u: UserInfo, db_before: Database)
+    //predicate PreCondition(u: UserInfo, db: Database) {
+      //DbPreCondition(u, db)
+    //}
+
+    //// only one that spec defines 
+    //predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    //predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      //forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    //predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      //DbOpsCorrect(u, operations) &&
+      //WellForned(operations)
+    //}
+
+    //method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
+      //requires PreCondition(user, db)
+      //ensures PostCondition(u, operations) 
+  //}
+
+  //trait {:termination false} IGenerator {
+
+    //var db: Database
+    //method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
+
+    //predicate RestPreCondition(u: UserInfo, db: Database)
+    //predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    //predicate DbPreCondition(u: UserInfo, db_before: Database)
+    //predicate PreCondition(u: UserInfo, db: Database) {
+      //DbPreCondition(u, db)
+    //}
+
+    //// only one that spec defines 
+    //predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    //predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      //forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    //predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      //DbOpsCorrect(u, operations) &&
+      //WellForned(operations)
+    //}
+
+    //method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
+      //requires PreCondition(user, db)
+      //ensures PostCondition(u, operations) 
+  //}
+
+  //trait {:termination false} IGenerator {
+
+    //var db: Database
+    //method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
+
+    //predicate RestPreCondition(u: UserInfo, db: Database)
+    //predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    //predicate DbPreCondition(u: UserInfo, db_before: Database)
+    //predicate PreCondition(u: UserInfo, db: Database) {
+      //DbPreCondition(u, db)
+    //}
+
+    //// only one that spec defines 
+    //predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    //predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      //forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    //predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      //DbOpsCorrect(u, operations) &&
+      //WellForned(operations)
+    //}
+
+    //method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
+      //requires PreCondition(user, db)
+      //ensures PostCondition(u, operations) 
+  //}
+
+  //trait {:termination false} IGenerator {
+
+    //var db: Database
+    //method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
+
+    //predicate RestPreCondition(u: UserInfo, db: Database)
+    //predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    //predicate DbPreCondition(u: UserInfo, db_before: Database)
+    //predicate PreCondition(u: UserInfo, db: Database) {
+      //DbPreCondition(u, db)
+    //}
+
+    //// only one that spec defines 
+    //predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    //predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      //forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    //predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      //DbOpsCorrect(u, operations) &&
+      //WellForned(operations)
+    //}
+
+    //method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
+      //requires PreCondition(user, db)
+      //ensures PostCondition(u, operations) 
+  //}
+
+  //trait {:termination false} IGenerator {
+
+    //var db: Database
+    //method GetOperations() returns (ops: DbProgram) { return db.GetOperations() }
+
+    //predicate RestPreCondition(u: UserInfo, db: Database)
+    //predicate RestPostCondition(u: UserInfo, payload: ReturnType, db_before: Database, db_after: Database)
+
+    //predicate DbPreCondition(u: UserInfo, db_before: Database)
+    //predicate PreCondition(u: UserInfo, db: Database) {
+      //DbPreCondition(u, db)
+    //}
+
+    //// only one that spec defines 
+    //predicate DbPostCondition(u: UserInfo, db_before: Database, db_after: Database)
+    //predicate DbOpsCorrect(u: UserInfo, operations: DbProgram) //, db_post_condition: (UserInfo, Database, Database) -> bool)
+      //forall before DbPostCondition(u, before, ExecuteProgram(before, operations))
+    //predicate PostCondition(u: UserInfo, operations: DbProgram) {
+      //DbOpsCorrect(u, operations) &&
+      //WellForned(operations)
+    //}
+
+    //method Generate(user: UserInfo) returns (api_result: Map<string, ReturnType>)
+      //requires PreCondition(user, db)
+      //ensures PostCondition(u, operations) 
+  //}
 
   class ApiEndpoint {
     var apiUrl: string
     var returnType: ReturnType
-    var generator: IGenerator
+    var generator: IGeneratorCore
 
-    constructor(apiUrl: string, rt: ReturnType, generator: IGenerator)
+    constructor(apiUrl: string, rt: ReturnType, generator: IGeneratorCore)
       requires apiUrl != ""
       requires apiUrl[0] == '/' // simple invariant: path-like
       ensures this.apiUrl == apiUrl

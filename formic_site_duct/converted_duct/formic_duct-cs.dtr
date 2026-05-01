@@ -1,16 +1,20 @@
 file_format_version = "1.0"
 dafny_version = "4.9.0.0"
-[options_by_module.SpecsTools]
-legacy-module-names = false
-[options_by_module.FormicProofHelpers]
-legacy-module-names = false
 [options_by_module.DB]
 legacy-module-names = false
 [options_by_module.DuctTools]
 legacy-module-names = false
+[options_by_module.SpecsTools]
+legacy-module-names = false
 [options_by_module.DuctSpecs]
 legacy-module-names = false
-[options_by_module.DuctImpl]
+[options_by_module.DuctLandingImpl]
+legacy-module-names = false
+[options_by_module.DuctLoginImpl]
+legacy-module-names = false
+[options_by_module.DuctSaveUserImpl]
+legacy-module-names = false
+[options_by_module.DuctSecureImpl]
 legacy-module-names = false
 [options_by_module.DuctApis]
 legacy-module-names = false

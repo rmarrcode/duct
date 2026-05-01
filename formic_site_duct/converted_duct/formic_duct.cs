@@ -9,526 +9,309 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.impl.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/db.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.specs.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/landing_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/login_challenge.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/save_user.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/secure_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
-module FormicProofHelpers {
-  lemma /*{:_induction prefix, needle, suffix}*/ ContainsInserted(prefix: string, needle: string, suffix: string)
-    ensures Contains(prefix + needle + suffix, needle)
-    decreases |prefix|
+module DB {
+  function {:compile true} TableOf(row: DbValue): Table
+    decreases row
   {
-    if |needle| == 0 {
-    } else if |prefix| == 0 {
-      assert (prefix + needle + suffix)[0 .. |needle|] == needle;
-    } else {
-      assert (prefix + needle + suffix)[1..] == prefix[1..] + needle + suffix;
-      ContainsInserted(prefix[1..], needle, suffix);
-    }
+    match row
+    case DbPersistedUser(_ /* _v0 */) =>
+      PersistedUserTable
+    case DbFormicUser(_ /* _v1 */) =>
+      FormicUserTable
+    case DbLaunchToken(_ /* _v2 */) =>
+      LaunchTokenTable
+    case DbSession(_ /* _v3 */) =>
+      SessionTable
   }
 
-  lemma /*{:_induction haystack, needle}*/ ContainsTail(haystack: string, needle: string)
-    requires |haystack| > 0
-    ensures Contains(haystack[1..], needle) ==> Contains(haystack, needle)
-    decreases haystack, needle
+  function {:compile true} KeyOf(row: DbValue): DbKey
+    decreases row
   {
+    match row
+    case DbPersistedUser(persistedUser) =>
+      PersistedUserKey(persistedUser.email)
+    case DbFormicUser(formicUser) =>
+      FormicUserKey(formicUser.id)
+    case DbLaunchToken(launchToken) =>
+      LaunchTokenKey(launchToken.id)
+    case DbSession(session) =>
+      SessionKey(session.id)
   }
 
-  lemma /*{:_induction s}*/ NoBarIfCharAbsent(s: string)
-    requires '|' !in s
-    ensures !Contains(s, ""|"")
-    decreases |s|
+  predicate ValidChange(change: DbChange)
+    decreases change
   {
-    if |s| > 0 {
-      assert s[0] != '|';
-      NoBarIfCharAbsent(s[1..]);
-    }
-  }
-
-  lemma /*{:_induction needle}*/ CrossingBarCannotMatch(left: string, right: string, needle: string)
-    requires 0 < |needle|
-    requires |left| < |needle|
-    requires |needle| <= |left| + 1 + |right|
-    requires !Contains(needle, ""|"")
-    ensures (left + ""|"" + right)[0 .. |needle|] != needle
-    decreases left, right, needle
-  {
-    if (left + ""|"" + right)[0 .. |needle|] == needle {
-      assert needle[|left| .. |left| + 1] == ""|"";
-      assert needle == needle[..|left|] + ""|"" + needle[|left| + 1..];
-      ContainsInserted(needle[..|left|], ""|"", needle[|left| + 1..]);
-      assert Contains(needle, ""|"");
-    }
-  }
-
-  lemma /*{:_induction left, right, needle}*/ NoContainsJoinedByBar(left: string, right: string, needle: string)
-    requires !Contains(left, needle)
-    requires !Contains(right, needle)
-    requires !Contains(needle, ""|"")
-    ensures !Contains(left + ""|"" + right, needle)
-    decreases |left|
-  {
-    if |needle| == 0 {
-      assert false;
-    } else if |left| == 0 {
-      assert (left + ""|"" + right)[1..] == right;
-      assert !Contains((left + ""|"" + right)[1..], needle);
-      if |needle| <= |left| + 1 + |right| {
-        CrossingBarCannotMatch(left, right, needle);
-      }
-    } else {
-      assert (left + ""|"" + right)[1..] == left[1..] + ""|"" + right;
-      if Contains(left[1..], needle) {
-        ContainsTail(left, needle);
-        assert false;
-      }
-      assert !Contains(left[1..], needle);
-      NoContainsJoinedByBar(left[1..], right, needle);
-      assert !Contains((left + ""|"" + right)[1..], needle);
-      if |needle| <= |left| + 1 + |right| {
-        if |left| < |needle| {
-          CrossingBarCannotMatch(left, right, needle);
-        } else {
-          if (left + ""|"" + right)[0 .. |needle|] == needle {
-            assert left[0 .. |needle|] == needle;
-            assert Contains(left, needle);
-          }
-        }
-      }
-    }
-  }
-
-  lemma /*{:_induction haystack, needle}*/ EqualLengthDifferentNoContains(haystack: string, needle: string)
-    requires |haystack| == |needle|
-    requires haystack != needle
-    ensures !Contains(haystack, needle)
-    decreases haystack, needle
-  {
-    assert haystack[0 .. |needle|] != needle;
-    assert |haystack[1..]| < |needle|;
-  }
-
-  lemma LoginLinkHasNoBar()
-    ensures !Contains(Link(""Sign in"", ""/login""), ""|"")
-  {
-    assert Link(""Sign in"", ""/login"") == ""<a href=\""/login\"">Sign in</a>"";
-    assert '|' !in ""<a href=\""/login\"">Sign in</a>"";
-    NoBarIfCharAbsent(""<a href=\""/login\"">Sign in</a>"");
-  }
-
-  lemma LogoutLinkHasNoBar()
-    ensures !Contains(Link(""Log out"", ""/logout""), ""|"")
-  {
-    assert Link(""Log out"", ""/logout"") == ""<a href=\""/logout\"">Log out</a>"";
-    assert '|' !in ""<a href=\""/logout\"">Log out</a>"";
-    NoBarIfCharAbsent(""<a href=\""/logout\"">Log out</a>"");
-  }
-
-  lemma LogoutLinkDoesNotContainLoginLink()
-    ensures !Contains(Link(""Log out"", ""/logout""), Link(""Sign in"", ""/login""))
-  {
-    assert Link(""Log out"", ""/logout"") == ""<a href=\""/logout\"">Log out</a>"";
-    assert Link(""Sign in"", ""/login"") == ""<a href=\""/login\"">Sign in</a>"";
-    assert ""<a href=\""/logout\"">Log out</a>""[13] == 'o';
-    assert Link(""Sign in"", ""/login"")[13] == 'i';
-    assert ""<a href=\""/logout\"">Log out</a>""[0 .. |Link(""Sign in"", ""/login"")|][13] == 'o';
-    assert ""<a href=\""/logout\"">Log out</a>""[0 .. |Link(""Sign in"", ""/login"")|] != Link(""Sign in"", ""/login"");
-    assert ""<a href=\""/logout\"">Log out</a>""[1..] == ""a href=\""/logout\"">Log out</a>"";
-    assert ""<a href=\""/logout\"">Log out</a>""[1..] != Link(""Sign in"", ""/login"");
-    EqualLengthDifferentNoContains(""<a href=\""/logout\"">Log out</a>""[1..], Link(""Sign in"", ""/login""));
-    assert !Contains(""<a href=\""/logout\"">Log out</a>""[1..], Link(""Sign in"", ""/login""));
-  }
-
-  import opened SpecsTools
-}
-
-module DuctImpl {
-
-  import opened DB
-
-  import opened DuctTools
-
-  import opened DuctSpecs
-
-  import opened SpecsTools
-
-  import FormicProofHelpers
-  class FormicLandingPage extends IGenerator {
-    constructor ()
-    {
-    }
-
-    predicate PreCondition(u: UserInfo, db: Database)
-      decreases u, db
-    {
-      LandingPagePre(u, db)
-    }
-
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-      decreases {db}, u, payload, db
-    {
-      LandingPagePost(u, payload, db)
-    }
-
-    method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx, db)
-      modifies this, db
-      ensures PostCondition(ctx, payload, db)
-      decreases ctx
-    {
-      var status := if ctx.authenticated then ""Signed in"" else ""Anonymous"";
-      var action := if ctx.authenticated then Link(""Log out"", ""/logout"") else Link(""Sign in"", ""/login"");
-      var statusPiece := ""status|"" + status;
-      var userPiece := ""user|"" + ctx.name;
-      var emailPiece := ""email|"" + ctx.email;
-      var picturePiece := ""picture|"" + ctx.picture;
-      var actionPiece := ""action|"" + action;
-      var closingPiece := ""</html>"";
-      var tail1 := actionPiece + ""|"" + closingPiece;
-      var tail2 := picturePiece + ""|"" + tail1;
-      var tail3 := emailPiece + ""|"" + tail2;
-      var tail4 := userPiece + ""|"" + tail3;
-      var tail5 := statusPiece + ""|"" + tail4;
-      var picturePanel := if ctx.picture == """" then ""<div class=\""avatar avatar-fallback\"">F</div>"" else ""<div class=\""avatar\""><img src=\"""" + ctx.picture + ""\"" alt=\"""" + ctx.name + ""\"" /></div>"";
-      var emailPanel := if ctx.email == """" then ""<span class=\""meta-value muted\"">No email linked</span>"" else ""<span class=\""meta-value\"">"" + ctx.email + ""</span>"";
-      var pictureMeta := if ctx.picture == """" then ""<span class=\""meta-value muted\"">No profile photo</span>"" else ""<span class=\""meta-value\"">Profile image connected</span>"";
-      var html := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}"" + ""body:before{content:\""\"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}"" + "".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}"" + "".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}"" + "".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}"" + "".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}"" + "".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}"" + "".actions a:hover{transform:translateY(-1px);}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}"" + ""</style></head><body>"" + ""<!-- proof:"" + tail5 + "" -->"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + picturePanel + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A cleaner generated surface for the formic demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + emailPanel + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + pictureMeta + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>"" + ""</aside>"" + ""</div></section></main></body></html>"";
-      assert html != """";
-      assert html == ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
-      var statusPrefix := ""<html>|status|"";
-      var statusSuffix := ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
-      var statusHaystack := statusPrefix + status + statusSuffix;
-      FormicProofHelpers.ContainsInserted(statusPrefix, status, statusSuffix);
-      assert html == statusHaystack;
-      assert Contains(statusHaystack, status);
-      assert Contains(html, status);
-      var namePrefix := ""<html>|"" + statusPiece + ""|user|"";
-      var nameSuffix := ""|"" + emailPiece + ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
-      var nameHaystack := namePrefix + ctx.name + nameSuffix;
-      FormicProofHelpers.ContainsInserted(namePrefix, ctx.name, nameSuffix);
-      assert html == nameHaystack;
-      assert Contains(nameHaystack, ctx.name);
-      assert Contains(html, ctx.name);
-      var actionPrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|"" + picturePiece + ""|action|"";
-      var actionSuffix := ""|"" + closingPiece;
-      var actionHaystack := actionPrefix + action + actionSuffix;
-      FormicProofHelpers.ContainsInserted(actionPrefix, action, actionSuffix);
-      assert html == actionHaystack;
-      assert Contains(actionHaystack, action);
-      assert Contains(html, action);
-      if ctx.email != """" {
-        var emailPrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|email|"";
-        var emailSuffix := ""|"" + picturePiece + ""|"" + actionPiece + ""|"" + closingPiece;
-        var emailHaystack := emailPrefix + ctx.email + emailSuffix;
-        FormicProofHelpers.ContainsInserted(emailPrefix, ctx.email, emailSuffix);
-        assert html == emailHaystack;
-        assert Contains(emailHaystack, ctx.email);
-        assert Contains(html, ctx.email);
-      }
-      if ctx.picture != """" {
-        var picturePrefix := ""<html>|"" + statusPiece + ""|"" + userPiece + ""|"" + emailPiece + ""|picture|"";
-        var pictureSuffix := ""|"" + actionPiece + ""|"" + closingPiece;
-        var pictureHaystack := picturePrefix + ctx.picture + pictureSuffix;
-        FormicProofHelpers.ContainsInserted(picturePrefix, ctx.picture, pictureSuffix);
-        assert html == pictureHaystack;
-        assert Contains(pictureHaystack, ctx.picture);
-        assert Contains(html, ctx.picture);
-      }
-      assert ctx.email == """" || Contains(html, ctx.email);
-      assert ctx.picture == """" || Contains(html, ctx.picture);
-      if ctx.authenticated {
-        var missingAction := Link(""Sign in"", ""/login"");
-        assert missingAction == Link(""Sign in"", ""/login"");
-        assert missingAction == ""<a href=\""/login\"">Sign in</a>"";
-        assert '|' !in ""<a href=\""/login\"">Sign in</a>"";
-        FormicProofHelpers.LoginLinkHasNoBar();
-        assert !Contains(missingAction, ""|"");
-        assert status == ""Signed in"";
-        assert action == Link(""Log out"", ""/logout"");
-        assert action == ""<a href=\""/logout\"">Log out</a>"";
-        assert Contains(html, ""Signed in"");
-        assert Contains(html, Link(""Log out"", ""/logout""));
-        assert !Contains(""<html>"", missingAction);
-        assert !Contains(""status"", missingAction);
-        assert !Contains(status, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""status"", status, missingAction);
-        assert statusPiece == ""status|"" + status;
-        assert !Contains(""status|"" + status, missingAction);
-        assert !Contains(statusPiece, missingAction);
-        assert !Contains(""user"", missingAction);
-        assert !Contains(ctx.name, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""user"", ctx.name, missingAction);
-        var userMissingHaystack := ""user"" + ""|"" + ctx.name;
-        assert userPiece == ""user|"" + ctx.name;
-        assert userMissingHaystack == ""user|"" + ctx.name;
-        assert !Contains(userMissingHaystack, missingAction);
-        assert !Contains(userPiece, missingAction);
-        assert !Contains(""email"", missingAction);
-        assert !Contains(ctx.email, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""email"", ctx.email, missingAction);
-        var emailMissingHaystack := ""email"" + ""|"" + ctx.email;
-        assert emailPiece == ""email|"" + ctx.email;
-        assert emailMissingHaystack == ""email|"" + ctx.email;
-        assert !Contains(emailMissingHaystack, missingAction);
-        assert !Contains(emailPiece, missingAction);
-        assert !Contains(""picture"", missingAction);
-        assert !Contains(ctx.picture, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""picture"", ctx.picture, missingAction);
-        var pictureMissingHaystack := ""picture"" + ""|"" + ctx.picture;
-        assert picturePiece == ""picture|"" + ctx.picture;
-        assert pictureMissingHaystack == ""picture|"" + ctx.picture;
-        assert !Contains(pictureMissingHaystack, missingAction);
-        assert !Contains(picturePiece, missingAction);
-        assert !Contains(""action"", missingAction);
-        FormicProofHelpers.LogoutLinkDoesNotContainLoginLink();
-        assert !Contains(action, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""action"", action, missingAction);
-        var actionMissingHaystack := ""action"" + ""|"" + action;
-        assert actionPiece == ""action|"" + action;
-        assert actionMissingHaystack == ""action|"" + action;
-        assert !Contains(actionMissingHaystack, missingAction);
-        assert !Contains(actionPiece, missingAction);
-        assert !Contains(closingPiece, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(actionPiece, closingPiece, missingAction);
-        assert !Contains(tail1, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(picturePiece, tail1, missingAction);
-        assert !Contains(tail2, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(emailPiece, tail2, missingAction);
-        assert !Contains(tail3, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(userPiece, tail3, missingAction);
-        assert !Contains(tail4, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(statusPiece, tail4, missingAction);
-        assert !Contains(tail5, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""<html>"", tail5, missingAction);
-        var htmlMissingHaystack := ""<html>"" + ""|"" + tail5;
-        assert html == htmlMissingHaystack;
-        assert !Contains(htmlMissingHaystack, missingAction);
-        assert !Contains(html, missingAction);
-        assert ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
-        assert !(Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
-        assert !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
-      } else {
-        var missingAction := Link(""Log out"", ""/logout"");
-        assert missingAction == Link(""Log out"", ""/logout"");
-        assert missingAction == ""<a href=\""/logout\"">Log out</a>"";
-        assert '|' !in ""<a href=\""/logout\"">Log out</a>"";
-        FormicProofHelpers.LogoutLinkHasNoBar();
-        assert !Contains(missingAction, ""|"");
-        assert status == ""Anonymous"";
-        assert action == Link(""Sign in"", ""/login"");
-        assert Contains(html, status);
-        assert Contains(html, action);
-        assert Contains(html, ""Anonymous"");
-        assert Contains(html, Link(""Sign in"", ""/login""));
-        assert !Contains(""<html>"", missingAction);
-        assert !Contains(""status"", missingAction);
-        assert !Contains(status, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""status"", status, missingAction);
-        assert statusPiece == ""status|"" + status;
-        assert !Contains(""status|"" + status, missingAction);
-        assert !Contains(statusPiece, missingAction);
-        assert !Contains(""user"", missingAction);
-        assert !Contains(ctx.name, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""user"", ctx.name, missingAction);
-        var userMissingHaystack := ""user"" + ""|"" + ctx.name;
-        assert userPiece == ""user|"" + ctx.name;
-        assert userMissingHaystack == ""user|"" + ctx.name;
-        assert !Contains(userMissingHaystack, missingAction);
-        assert !Contains(userPiece, missingAction);
-        assert !Contains(""email"", missingAction);
-        assert !Contains(ctx.email, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""email"", ctx.email, missingAction);
-        var emailMissingHaystack := ""email"" + ""|"" + ctx.email;
-        assert emailPiece == ""email|"" + ctx.email;
-        assert emailMissingHaystack == ""email|"" + ctx.email;
-        assert !Contains(emailMissingHaystack, missingAction);
-        assert !Contains(emailPiece, missingAction);
-        assert !Contains(""picture"", missingAction);
-        assert !Contains(ctx.picture, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""picture"", ctx.picture, missingAction);
-        var pictureMissingHaystack := ""picture"" + ""|"" + ctx.picture;
-        assert picturePiece == ""picture|"" + ctx.picture;
-        assert pictureMissingHaystack == ""picture|"" + ctx.picture;
-        assert !Contains(pictureMissingHaystack, missingAction);
-        assert !Contains(picturePiece, missingAction);
-        assert !Contains(""action"", missingAction);
-        assert !Contains(action, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""action"", action, missingAction);
-        var actionMissingHaystack := ""action"" + ""|"" + action;
-        assert actionPiece == ""action|"" + action;
-        assert actionMissingHaystack == ""action|"" + action;
-        assert !Contains(actionMissingHaystack, missingAction);
-        assert !Contains(actionPiece, missingAction);
-        assert !Contains(closingPiece, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(actionPiece, closingPiece, missingAction);
-        assert !Contains(tail1, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(picturePiece, tail1, missingAction);
-        assert !Contains(tail2, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(emailPiece, tail2, missingAction);
-        assert !Contains(tail3, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(userPiece, tail3, missingAction);
-        assert !Contains(tail4, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(statusPiece, tail4, missingAction);
-        assert !Contains(tail5, missingAction);
-        FormicProofHelpers.NoContainsJoinedByBar(""<html>"", tail5, missingAction);
-        var htmlMissingHaystack := ""<html>"" + ""|"" + tail5;
-        assert html == htmlMissingHaystack;
-        assert !Contains(htmlMissingHaystack, missingAction);
-        assert !Contains(html, missingAction);
-        assert !(Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
-        assert ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")));
-        assert !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")));
-      }
-      payload := ReturnType.Content(html);
-    }
-  }
-
-  class LoginChallengePage extends IGenerator {
-    constructor ()
-    {
-    }
-
-    predicate PreCondition(u: UserInfo, db: Database)
-      decreases u, db
-    {
+    match change
+    case Put(_ /* _v4 */) =>
       true
-    }
-
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-      decreases {db}, u, payload, db
-    {
-      LoginPost(u, payload, db)
-    }
-
-    method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx, db)
-      modifies this, db
-      ensures PostCondition(ctx, payload, db)
-      decreases ctx
-    {
-      payload := ReturnType.ChallengeGoogle(""/save_user"");
-    }
-  }
-
-  class SecurePage extends IGenerator {
-    constructor ()
-    {
-    }
-
-    predicate PreCondition(u: UserInfo, db: Database)
-      decreases u, db
-    {
+    case Edit(key, newValue) =>
+      key == KeyOf(newValue)
+    case Delete(_ /* _v5 */) =>
       true
-    }
-
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-      decreases {db}, u, payload, db
-    {
-      SecurePost(u, payload, db)
-    }
-
-    method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx, db)
-      modifies this, db
-      ensures PostCondition(ctx, payload, db)
-      decreases ctx
-    {
-      if ctx.authenticated {
-        var logout := Link(""Log out"", ""/logout"");
-        var authText := ""You are authenticated."";
-        var htmlPrefix := ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Secure</title></head><body><h1>Hello, "";
-        var nameSuffix := ""!</h1><p>"" + authText + ""</p><p>"" + logout + ""</p></body></html>"";
-        var html := htmlPrefix + ctx.name + nameSuffix;
-        assert html != """";
-        assert html == htmlPrefix + ctx.name + nameSuffix;
-        FormicProofHelpers.ContainsInserted(htmlPrefix, ctx.name, nameSuffix);
-        assert Contains(html, ctx.name);
-        var authPrefix := htmlPrefix + ctx.name + ""!</h1><p>"";
-        var authSuffix := ""</p><p>"" + logout + ""</p></body></html>"";
-        assert html == authPrefix + authText + authSuffix;
-        FormicProofHelpers.ContainsInserted(authPrefix, authText, authSuffix);
-        assert Contains(html, authText);
-        assert Contains(html, ""You are authenticated."");
-        var logoutPrefix := htmlPrefix + ctx.name + ""!</h1><p>"" + authText + ""</p><p>"";
-        var logoutSuffix := ""</p></body></html>"";
-        assert html == logoutPrefix + logout + logoutSuffix;
-        FormicProofHelpers.ContainsInserted(logoutPrefix, logout, logoutSuffix);
-        assert Contains(html, logout);
-        assert Contains(html, Link(""Log out"", ""/logout""));
-        payload := ReturnType.Content(html);
-      } else {
-        payload := ReturnType.ChallengeGoogle(""/secure"");
-      }
-    }
   }
 
-  class SaveUserPage extends IGenerator {
-    constructor ()
-    {
-    }
+  function {:compile true} FilterEntries(entries: seq<DbValue>, key: DbKey): seq<DbValue>
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      []
+    else if KeyOf(entries[0]) == key then
+      FilterEntries(entries[1..], key)
+    else
+      [entries[0]] + FilterEntries(entries[1..], key)
+  }
 
-    predicate PreCondition(u: UserInfo, db: Database)
-      decreases u, db
-    {
+  function {:compile true} HasKey(entries: seq<DbValue>, key: DbKey): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      KeyOf(entries[0]) == key || HasKey(entries[1..], key)
+  }
+
+  function {:compile true} TableHasAny(entries: seq<DbValue>, table: Table): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      TableOf(entries[0]) == table || TableHasAny(entries[1..], table)
+  }
+
+  function {:compile true} TableHasKey(entries: seq<DbValue>, table: Table, key: DbKey): bool
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      false
+    else
+      (TableOf(entries[0]) == table && KeyOf(entries[0]) == key) || TableHasKey(entries[1..], table, key)
+  }
+
+  function {:compile true} RowsForTable(entries: seq<DbValue>, table: Table): seq<DbValue>
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      []
+    else if TableOf(entries[0]) == table then
+      [entries[0]] + RowsForTable(entries[1..], table)
+    else
+      RowsForTable(entries[1..], table)
+  }
+
+  function {:compile true} RowsForKey(entries: seq<DbValue>, key: DbKey): seq<DbValue>
+    decreases |entries|
+  {
+    if |entries| == 0 then
+      []
+    else if KeyOf(entries[0]) == key then
+      [entries[0]]
+    else
+      RowsForKey(entries[1..], key)
+  }
+
+  function {:compile true} EvalPred(entries: seq<DbValue>, pred: DbPred): bool
+    decreases entries, pred
+  {
+    match pred
+    case TruePred() =>
       true
-    }
-
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-      decreases {db}, u, payload, db
-    {
-      SaveUserPost(u, payload, db)
-    }
-
-    method Generate(ctx: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(ctx, db)
-      modifies this, db
-      ensures PostCondition(ctx, payload, db)
-      decreases ctx
-    {
-      if ctx.authenticated && ctx.email != """" {
-        var saved := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-        db.entries := db.entries + [saved];
-        payload := ReturnType.Redirect(""/"");
-      } else {
-        payload := ReturnType.ChallengeGoogle(""/save_user"");
-      }
-    }
+    case FalsePred() =>
+      false
+    case HasKeyPred(key) =>
+      HasKey(entries, key)
+    case TableHasAnyPred(table) =>
+      TableHasAny(entries, table)
+    case TableHasKeyPred(table, key) =>
+      TableHasKey(entries, table, key)
+    case NotPred(inner) =>
+      !EvalPred(entries, inner)
+    case AndPred(left, right) =>
+      EvalPred(entries, left) &&
+      EvalPred(entries, right)
+    case OrPred(left, right) =>
+      EvalPred(entries, left) || EvalPred(entries, right)
   }
-}
 
-module DuctApis {
+  function {:compile true} EvalQuery(entries: seq<DbValue>, query: DbQuery): seq<DbValue>
+    decreases entries, query
+  {
+    match query
+    case AllRows() =>
+      entries
+    case RowsInTable(table) =>
+      RowsForTable(entries, table)
+    case RowWithKey(key) =>
+      RowsForKey(entries, key)
+    case RowsMatching(pred) =>
+      if EvalPred(entries, pred) then
+        entries
+      else
+        []
+  }
 
-  import opened DB
+  function ProgramSize(program: DbProgram): nat
+    decreases program
+  {
+    match program
+    case Return() =>
+      1
+    case Seq(p1, p2) =>
+      1 + ProgramSize(p1) + ProgramSize(p2)
+    case Lookup(_ /* _v6 */, _ /* _v7 */) =>
+      1
+    case Exists(_ /* _v8 */, _ /* _v9 */) =>
+      1
+    case Insert(_ /* _v10 */) =>
+      1
+    case Update(_ /* _v11 */, _ /* _v12 */) =>
+      1
+    case DeleteRow(_ /* _v13 */) =>
+      1
+    case If(_ /* _v14 */, thenP, elseP) =>
+      1 + ProgramSize(thenP) + ProgramSize(elseP)
+    case ForEach(_ /* _v15 */, body) =>
+      1 + ProgramSize(body)
+  }
 
-  import opened DuctImpl
+  function {:compile true} PatchToChange(key: DbKey, patch: Patch): seq<DbChange>
+    decreases key, patch
+  {
+    match patch
+    case ReplaceWith(row) =>
+      if KeyOf(row) == key then
+        [Edit(key, row)]
+      else
+        []
+  }
 
-  import opened DuctTools
-  class Views {
-    static method Endpoints() returns (all: AllApiEndpoints)
+  function {:compile true} ExecuteOperation(entries: seq<DbValue>, change: DbChange): seq<DbValue>
+    decreases entries, change
+  {
+    match change
+    case Put(row) =>
+      FilterEntries(entries, KeyOf(row)) + [row]
+    case Edit(key, newValue) =>
+      if key == KeyOf(newValue) then
+        FilterEntries(entries, key) + [newValue]
+      else
+        entries
+    case Delete(key) =>
+      FilterEntries(entries, key)
+  }
+
+  function {:compile true} ExecuteOperations(entries: seq<DbValue>, changes: seq<DbChange>): seq<DbValue>
+    decreases |changes|
+  {
+    if |changes| == 0 then
+      entries
+    else
+      ExecuteOperations(ExecuteOperation(entries, changes[0]), changes[1..])
+  }
+
+  function {:compile true} ProgramOperationsForRows(entries: seq<DbValue>, rows: seq<DbValue>, body: DbProgram): seq<DbChange>
+    decreases ProgramSize(body), |rows|
+  {
+    if |rows| == 0 then
+      []
+    else
+      var ops: seq<DbChange> := ProgramOperations(entries, body); ops + ProgramOperationsForRows(ExecuteOperations(entries, ops), rows[1..], body)
+  }
+
+  function {:compile true} ProgramOperations(entries: seq<DbValue>, program: DbProgram): seq<DbChange>
+    decreases ProgramSize(program), 0
+  {
+    match program
+    case Return() =>
+      []
+    case Seq(p1, p2) =>
+      var ops1: seq<DbChange> := ProgramOperations(entries, p1);
+      ops1 + ProgramOperations(ExecuteOperations(entries, ops1), p2)
+    case Lookup(_ /* _v16 */, _ /* _v17 */) =>
+      []
+    case Exists(_ /* _v18 */, _ /* _v19 */) =>
+      []
+    case Insert(row) =>
+      [Put(row)]
+    case Update(key, patch) =>
+      PatchToChange(key, patch)
+    case DeleteRow(key) =>
+      [Delete(key)]
+    case If(cond, thenP, elseP) =>
+      if EvalPred(entries, cond) then
+        ProgramOperations(entries, thenP)
+      else
+        ProgramOperations(entries, elseP)
+    case ForEach(query, body) =>
+      ProgramOperationsForRows(entries, EvalQuery(entries, query), body)
+  }
+
+  function {:compile true} ExecuteProgram(entries: seq<DbValue>, program: DbProgram): seq<DbValue>
+    decreases entries, program
+  {
+    ExecuteOperations(entries, ProgramOperations(entries, program))
+  }
+
+  datatype DbTimestamp = DbTimestamp(value: string)
+
+  datatype OptionalDbTimestamp = MissingTimestamp | PresentTimestamp(value: DbTimestamp)
+
+  datatype PersistedUser = PersistedUser(email: string, name: string, picture: string)
+
+  datatype UserCreds = FormicUser(id: int, user: PersistedUser, launch_token: LaunchToken)
+
+  datatype LaunchToken = LaunchToken(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, used_at: OptionalDbTimestamp, created_at: DbTimestamp)
+
+  datatype Session = Session(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, revoked_at: OptionalDbTimestamp, created_at: DbTimestamp, last_seen_at: DbTimestamp)
+
+  datatype Table = PersistedUserTable | FormicUserTable | LaunchTokenTable | SessionTable
+
+  datatype DbValue = DbPersistedUser(persistedUser: PersistedUser) | DbFormicUser(formicUser: UserCreds) | DbLaunchToken(launchToken: LaunchToken) | DbSession(session: Session)
+
+  datatype DbKey = PersistedUserKey(email: string) | FormicUserKey(id: int) | LaunchTokenKey(id: int) | SessionKey(id: int)
+
+  datatype DbChange = Put(row: DbValue) | Edit(key: DbKey, newValue: DbValue) | Delete(key: DbKey)
+
+  datatype Patch = ReplaceWith(row: DbValue)
+
+  datatype DbPred = TruePred | FalsePred | HasKeyPred(key: DbKey) | TableHasAnyPred(table: Table) | TableHasKeyPred(table: Table, key: DbKey) | NotPred(pred: DbPred) | AndPred(left: DbPred, right: DbPred) | OrPred(left: DbPred, right: DbPred)
+
+  datatype DbQuery = AllRows | RowsInTable(table: Table) | RowWithKey(key: DbKey) | RowsMatching(pred: DbPred)
+
+  datatype DbProgram = Return | Seq(p1: DbProgram, p2: DbProgram) | Lookup(table: Table, key: DbKey) | Exists(table: Table, pred: DbPred) | Insert(row: DbValue) | Update(key: DbKey, patch: Patch) | DeleteRow(key: DbKey) | If(cond: DbPred, thenP: DbProgram, elseP: DbProgram) | ForEach(query: DbQuery, body: DbProgram)
+
+  class Database {
+    var operations: seq<DbChange>
+
+    constructor ()
+      ensures operations == []
     {
-      var catalog := new AllApiEndpoints();
-      var appDb := new Database();
-      var formic_landing := new FormicLandingPage();
-      formic_landing.SetDb(appDb);
-      var home := new ApiEndpoint(""/"", ReturnType.Content(""""), formic_landing);
-      catalog.Add(home);
-      var login_page := new LoginChallengePage();
-      login_page.SetDb(appDb);
-      var login := new ApiEndpoint(""/login"", ReturnType.ChallengeGoogle(""/""), login_page);
-      catalog.Add(login);
-      var save_user_page := new SaveUserPage();
-      save_user_page.SetDb(appDb);
-      var save_user := new ApiEndpoint(""/save_user"", ReturnType.Content(""""), save_user_page);
-      catalog.Add(save_user);
-      var secure_page := new SecurePage();
-      secure_page.SetDb(appDb);
-      var secure := new ApiEndpoint(""/secure"", ReturnType.Content(""""), secure_page);
-      catalog.Add(secure);
-      all := catalog;
+      operations := [];
+    }
+
+    ghost function Entries(): seq<DbValue>
+      reads this
+      decreases {this}
+    {
+      ExecuteOperations([], operations)
+    }
+
+    method ApplyOperations(changes: seq<DbChange>)
+      modifies this
+      ensures operations == old(operations) + changes
+      decreases changes
+    {
+      operations := operations + changes;
+    }
+
+    method GetOperations() returns (ops: seq<DbChange>)
+      ensures ops == operations
+    {
+      ops := operations;
     }
   }
 }
@@ -540,37 +323,54 @@ module DuctTools {
 
   datatype ReturnType = Content(body: string) | ChallengeGoogle(returnUrl: string) | Redirect(url: string)
 
-  trait {:termination false} IGenerator {
-    var db: Database
+  trait IGeneratorSpec {
+    predicate PreCondition(u: UserInfo)
+      decreases u
 
-    method SetDb(db: Database)
-      modifies this
-      ensures this.db == db
-      decreases db
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+  }
+
+  trait {:termination false} IGeneratorCore extends IGeneratorSpec {
+    function Program(u: UserInfo): DbProgram
+      decreases u
+
+    function Response(u: UserInfo): ReturnType
+      decreases u
+
+    ghost predicate ImplementationCorrect(u: UserInfo)
+      decreases u
     {
-      this.db := db;
+      forall before: seq<DbValue> {:trigger ExecuteProgram(before, Program(u))} :: 
+        PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u)))
     }
 
-    predicate PreCondition(u: UserInfo, db: Database)
-      decreases u, db
+    ghost predicate GeneratePost(u: UserInfo, payload: ReturnType, prog: DbProgram)
+      decreases u, payload, prog
+    {
+      payload == Response(u) &&
+      prog == Program(u) &&
+      forall before: seq<DbValue> {:trigger ExecuteProgram(before, prog)} :: 
+        PostCondition(u, before, payload, ExecuteProgram(before, prog))
+    }
 
-    twostate predicate PostCondition(u: UserInfo, payload: ReturnType, db: Database)
-      reads db
-      decreases {db}, u, payload, db
-
-    method Generate(user: UserInfo) returns (payload: ReturnType)
-      requires PreCondition(user, db)
-      modifies this, db
-      ensures PostCondition(user, payload, db)
-      decreases user
+    method Generate(u: UserInfo) returns (payload: ReturnType, prog: DbProgram)
+      requires PreCondition(u)
+      ensures payload == Response(u)
+      ensures prog == Program(u)
+      decreases u
+    {
+      payload := Response(u);
+      prog := Program(u);
+    }
   }
 
   class ApiEndpoint {
     var apiUrl: string
     var returnType: ReturnType
-    var generator: IGenerator
+    var generator: IGeneratorCore
 
-    constructor (apiUrl: string, rt: ReturnType, generator: IGenerator)
+    constructor (apiUrl: string, rt: ReturnType, generator: IGeneratorCore)
       requires apiUrl != """"
       requires apiUrl[0] == '/'
       ensures this.apiUrl == apiUrl
@@ -637,8 +437,8 @@ module SpecsTools {
 }
 
 module DuctSpecs {
-  predicate LandingPagePre(ctx: UserInfo, db: Database)
-    decreases ctx, db
+  predicate LandingPagePre(ctx: UserInfo)
+    decreases ctx
   {
     ctx.name != """" &&
     !Contains(ctx.name, ""Signed in"") &&
@@ -655,41 +455,52 @@ module DuctSpecs {
     !Contains(ctx.picture, Link(""Sign in"", ""/login""))
   }
 
-  predicate LandingPagePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    decreases ctx, payload, db
+  predicate LandingPagePayloadPost(ctx: UserInfo, payload: ReturnType)
+    decreases ctx, payload
   {
     payload.Content? &&
     var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
   }
 
-  predicate LoginPost(ctx: UserInfo, payload: ReturnType, db: Database)
-    decreases ctx, payload, db
+  predicate LandingPagePost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+    decreases ctx, before, payload, after
   {
-    payload == ReturnType.ChallengeGoogle(""/save_user"")
+    LandingPagePayloadPost(ctx, payload) &&
+    after == before
   }
 
-  predicate SecurePost(ctx: UserInfo, payload: ReturnType, db: Database)
-    decreases ctx, payload, db
+  predicate LoginPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+    decreases ctx, before, payload, after
   {
-    (ctx.authenticated ==>
-      payload.Content? &&
-      Contains(payload.body, ctx.name) &&
-      Contains(payload.body, ""You are authenticated"")) &&
-    (!ctx.authenticated ==>
-      payload.Content? &&
-      Contains(payload.body, ""You are not authenticated""))
+    payload == ReturnType.ChallengeGoogle(""/save_user"") &&
+    after == before
   }
 
-  twostate predicate SaveUserPost(ctx: UserInfo, payload: ReturnType, db: Database)
-    reads db
-    decreases {db}, ctx, payload, db
+  predicate SecurePost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+    decreases ctx, before, payload, after
+  {
+    after == before &&
+    if ctx.authenticated then payload.Content? && Contains(payload.body, ctx.name) && Contains(payload.body, ""You are authenticated"") else payload == ReturnType.ChallengeGoogle(""/secure"")
+  }
+
+  function {:compile true} SaveUserOperations(ctx: UserInfo): seq<DbChange>
+    decreases ctx
   {
     if ctx.authenticated && ctx.email != """" then
-      ghost var saved: DbValue := DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
-      saved in db.entries &&
-      payload == ReturnType.Redirect(""/"")
+      [DbChange.Put(DbValue.DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture)))]
     else
-      payload == ReturnType.ChallengeGoogle(""/save_user"")
+      []
+  }
+
+  predicate SaveUserPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+    decreases ctx, before, payload, after
+  {
+    if ctx.authenticated && ctx.email != """" then
+      var row: DbValue := DbPersistedUser(PersistedUser(ctx.email, ctx.name, ctx.picture));
+      payload == Redirect(""/"") &&
+      after == FilterEntries(before, PersistedUserKey(ctx.email)) + [row]
+    else
+      payload == ChallengeGoogle(""/save_user"") && after == before
   }
 
   import opened DuctTools
@@ -697,30 +508,301 @@ module DuctSpecs {
   import opened SpecsTools
 
   import opened DB
+
+  trait {:termination false} LandingPageSpec extends IGeneratorCore {
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      LandingPagePre(u)
+    }
+
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+    {
+      LandingPagePost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} LoginChallengePageSpec extends IGeneratorCore {
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+    {
+      LoginPost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} SaveUserPageSpec extends IGeneratorCore {
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+    {
+      SaveUserPost(u, before, payload, after)
+    }
+  }
+
+  trait {:termination false} SecurePageSpec extends IGeneratorCore {
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+    {
+      SecurePost(u, before, payload, after)
+    }
+  }
 }
 
-module DB {
-  datatype DbTimestamp = DbTimestamp(value: string)
+module DuctLandingImpl {
+  function LandingPageStatus(ctx: UserInfo): string
+    decreases ctx
+  {
+    if ctx.authenticated then
+      ""Signed in""
+    else
+      ""Anonymous""
+  }
 
-  datatype OptionalDbTimestamp = MissingTimestamp | PresentTimestamp(value: DbTimestamp)
+  function LandingPageAction(ctx: UserInfo): string
+    decreases ctx
+  {
+    if ctx.authenticated then
+      Link(""Log out"", ""/logout"")
+    else
+      Link(""Sign in"", ""/login"")
+  }
 
-  datatype PersistedUser = PersistedUser(email: string, name: string, picture: string)
+  function LandingPagePicturePanel(ctx: UserInfo): string
+    decreases ctx
+  {
+    if ctx.picture == """" then
+      ""<div class=\""avatar avatar-fallback\"">F</div>""
+    else
+      ""<div class=\""avatar\""><img src=\"""" + ctx.picture + ""\"" alt=\"""" + ctx.name + ""\"" /></div>""
+  }
 
-  datatype UserCreds = FormicUser(id: int, user: PersistedUser, launch_token: LaunchToken)
+  function LandingPageEmailPanel(ctx: UserInfo): string
+    decreases ctx
+  {
+    if ctx.email == """" then
+      ""<span class=\""meta-value muted\"">No email linked</span>""
+    else
+      ""<span class=\""meta-value\"">"" + ctx.email + ""</span>""
+  }
 
-  datatype LaunchToken = LaunchToken(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, used_at: OptionalDbTimestamp, created_at: DbTimestamp)
+  function LandingPagePictureMeta(ctx: UserInfo): string
+    decreases ctx
+  {
+    if ctx.picture == """" then
+      ""<span class=\""meta-value muted\"">No profile photo</span>""
+    else
+      ""<span class=\""meta-value\"">Profile image connected</span>""
+  }
 
-  datatype Session = Session(id: int, user_id: int, token_hash: string, expires_at: DbTimestamp, revoked_at: OptionalDbTimestamp, created_at: DbTimestamp, last_seen_at: DbTimestamp)
+  function LandingPageHtml(ctx: UserInfo): string
+    decreases ctx
+  {
+    var status: string := LandingPageStatus(ctx);
+    var action: string := LandingPageAction(ctx);
+    ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Formic</title>"" + ""<style>"" + "":root{--bg:#f7f3ea;--ink:#171717;--muted:#63635f;--card:#fffdf8;--accent:#0f766e;--line:rgba(23,23,23,.12);}"" + ""*{box-sizing:border-box;}body{margin:0;font-family:\""Avenir Next\"",\""Segoe UI\"",sans-serif;background:linear-gradient(180deg,#faf7f0,#ebe7dd);color:var(--ink);}"" + "".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;}"" + "".panel{width:min(920px,100%);background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 24px 70px rgba(23,23,23,.12);}"" + "".hero{display:grid;grid-template-columns:150px 1fr;gap:26px;padding:32px;border-bottom:1px solid var(--line);}"" + "".avatar{width:150px;height:150px;border-radius:18px;overflow:hidden;background:#e5e0d6;border:1px solid var(--line);display:grid;place-items:center;}"" + "".avatar img{width:100%;height:100%;object-fit:cover;display:block;}"" + "".avatar-fallback{font-size:52px;font-weight:800;color:var(--accent);letter-spacing:.08em;}"" + "".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);}"" + "".title{margin:0;font-size:42px;line-height:1;font-weight:800;}"" + "".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:9px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:14px;font-weight:700;}"" + "".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);}"" + "".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.6;max-width:42rem;}"" + "".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 32px 32px;}"" + "".card{padding:22px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid var(--line);}"" + "".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}"" + "".meta-grid{display:grid;gap:14px;}"" + "".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(23,23,23,.08);}"" + "".meta-row:last-child{border-bottom:0;padding-bottom:0;}"" + "".meta-label{font-weight:700;color:var(--muted);}"" + "".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}"" + "".muted{color:var(--muted);font-weight:500;}"" + "".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}"" + "".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;background:var(--accent);color:#fff;}"" + "".aside-copy{margin:0;color:var(--muted);line-height:1.7;}"" + ""@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:14px;}.title{font-size:34px;}}"" + ""</style></head><body>"" + ""<main class=\""shell\""><section class=\""panel\"">"" + ""<div class=\""hero\"">"" + LandingPagePicturePanel(ctx) + ""<div>"" + ""<p class=\""eyebrow\"">Formic Landing Page</p>"" + ""<h1 class=\""title\"">"" + ctx.name + ""</h1>"" + ""<div class=\""status-badge\""><span class=\""status-dot\""></span>"" + status + ""</div>"" + ""<p class=\""lede\"">A generated profile surface for the formic demo.</p>"" + ""</div></div>"" + ""<div class=\""content\"">"" + ""<section class=\""card\"">"" + ""<p class=\""card-title\"">Profile</p>"" + ""<div class=\""meta-grid\"">"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Name</span><span class=\""meta-value\"">"" + ctx.name + ""</span></div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Email</span>"" + LandingPageEmailPanel(ctx) + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Picture</span>"" + LandingPagePictureMeta(ctx) + ""</div>"" + ""<div class=\""meta-row\""><span class=\""meta-label\"">Session</span><span class=\""meta-value\"">"" + status + ""</span></div>"" + ""</div>"" + ""<div class=\""actions\"">"" + action + ""</div>"" + ""</section>"" + ""<aside class=\""card\"">"" + ""<p class=\""card-title\"">Notes</p>"" + ""<p class=\""aside-copy\"">This page is generated from Dafny and rendered through the ASP.NET host.</p>"" + ""</aside>"" + ""</div></section></main></body></html>""
+  }
 
-  datatype DbValue = DbPersistedUser(persistedUser: PersistedUser) | DbFormicUser(formicUser: UserCreds) | DbLaunchToken(launchToken: LaunchToken) | DbSession(session: Session)
+  import opened DB
 
-  class Database {
-    var entries: seq<DbValue>
+  import opened DuctTools
 
+  import opened DuctSpecs
+
+  import opened SpecsTools
+
+  class FormicLandingPage extends LandingPageSpec {
     constructor ()
-      ensures entries == []
     {
-      entries := [];
+    }
+
+    function Response(u: UserInfo): ReturnType
+      decreases u
+    {
+      Content(LandingPageHtml(u))
+    }
+
+    function Program(u: UserInfo): DbProgram
+      decreases u
+    {
+      Return
+    }
+  }
+}
+
+module DuctLoginImpl {
+
+  import opened DB
+
+  import opened DuctTools
+
+  import opened DuctSpecs
+  class LoginChallengePage extends LoginChallengePageSpec {
+    constructor ()
+    {
+    }
+
+    function Response(u: UserInfo): ReturnType
+      decreases u
+    {
+      ChallengeGoogle(""/save_user"")
+    }
+
+    function Program(u: UserInfo): DbProgram
+      decreases u
+    {
+      Return
+    }
+  }
+}
+
+module DuctSaveUserImpl {
+
+  import opened DB
+
+  import opened DuctTools
+
+  import opened DuctSpecs
+  class SaveUserPage extends SaveUserPageSpec {
+    constructor ()
+    {
+    }
+
+    function Response(u: UserInfo): ReturnType
+      decreases u
+    {
+      if u.authenticated && u.email != """" then
+        Redirect(""/"")
+      else
+        ChallengeGoogle(""/save_user"")
+    }
+
+    function Program(u: UserInfo): DbProgram
+      decreases u
+    {
+      if u.authenticated && u.email != """" then
+        Insert(DbPersistedUser(PersistedUser(u.email, u.name, u.picture)))
+      else
+        Return
+    }
+
+    lemma /*{:_induction this}*/ ProveImplementationCorrect(u: UserInfo)
+      requires PreCondition(u)
+      ensures ImplementationCorrect(u)
+      decreases u
+    {
+      assert forall before: seq<DbValue> {:trigger ExecuteProgram(before, Program(u))} :: PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u))) by {
+        forall before: seq<DbValue> | true
+          ensures PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u)))
+        {
+          if u.authenticated && u.email != """" {
+            ghost var row := DbPersistedUser(PersistedUser(u.email, u.name, u.picture));
+            assert Response(u) == Redirect(""/"");
+            assert KeyOf(row) == PersistedUserKey(u.email);
+            assert Program(u) == Insert(row);
+            assert ProgramOperations(before, Program(u)) == [Put(row)];
+            assert ExecuteProgram(before, Program(u)) == ExecuteOperations(before, [Put(row)]);
+            assert ExecuteProgram(before, Program(u)) == FilterEntries(before, PersistedUserKey(u.email)) + [row];
+          } else {
+            assert Response(u) == ChallengeGoogle(""/save_user"");
+            assert Program(u) == Return;
+            assert ProgramOperations(before, Program(u)) == [];
+            assert ExecuteProgram(before, Program(u)) == before;
+          }
+        }
+      }
+    }
+  }
+}
+
+module DuctSecureImpl {
+  function SecureHtml(ctx: UserInfo): string
+    decreases ctx
+  {
+    var logout: string := Link(""Log out"", ""/logout"");
+    var authText: string := ""You are authenticated."";
+    ""<!doctype html><html lang=\""en\""><head><meta charset=\""utf-8\"" />"" + ""<meta name=\""viewport\"" content=\""width=device-width, initial-scale=1\"" />"" + ""<title>Secure</title></head><body><h1>Hello, "" + ctx.name + ""!</h1><p>"" + authText + ""</p><p>"" + logout + ""</p></body></html>""
+  }
+
+  import opened DB
+
+  import opened DuctTools
+
+  import opened DuctSpecs
+
+  import opened SpecsTools
+
+  class SecurePage extends SecurePageSpec {
+    constructor ()
+    {
+    }
+
+    function Response(u: UserInfo): ReturnType
+      decreases u
+    {
+      if u.authenticated then
+        Content(SecureHtml(u))
+      else
+        ChallengeGoogle(""/secure"")
+    }
+
+    function Program(u: UserInfo): DbProgram
+      decreases u
+    {
+      Return
+    }
+  }
+}
+
+module DuctApis {
+
+  import opened DuctTools
+
+  import opened DuctLandingImpl
+
+  import opened DuctLoginImpl
+
+  import opened DuctSaveUserImpl
+
+  import opened DuctSecureImpl
+  class Views {
+    static method EndPointsInterface()
+    {
+    }
+
+    static method Endpoints() returns (all: AllApiEndpoints)
+    {
+      var catalog := new AllApiEndpoints();
+      var formic_landing := new FormicLandingPage();
+      var home := new ApiEndpoint(""/"", ReturnType.Content(""""), formic_landing);
+      catalog.Add(home);
+      var login_page := new LoginChallengePage();
+      var login := new ApiEndpoint(""/login"", ReturnType.ChallengeGoogle(""/save_user""), login_page);
+      catalog.Add(login);
+      var save_user_page := new SaveUserPage();
+      var save_user := new ApiEndpoint(""/save_user"", ReturnType.Content(""""), save_user_page);
+      catalog.Add(save_user);
+      var secure_page := new SecurePage();
+      var secure := new ApiEndpoint(""/secure"", ReturnType.Content(""""), secure_page);
+      catalog.Add(secure);
+      all := catalog;
     }
   }
 }
@@ -6398,32 +6480,417 @@ internal static class FuncExtensions {
   public static Func<U1, U2, U3, UResult> DowncastClone<T1, T2, T3, TResult, U1, U2, U3, UResult>(this Func<T1, T2, T3, TResult> F, Func<U1, T1> ArgConv1, Func<U2, T2> ArgConv2, Func<U3, T3> ArgConv3, Func<TResult, UResult> ResConv) {
     return (arg1, arg2, arg3) => ResConv(F(ArgConv1(arg1), ArgConv2(arg2), ArgConv3(arg3)));
   }
+  public static Func<U1, U2, U3, U4, UResult> DowncastClone<T1, T2, T3, T4, TResult, U1, U2, U3, U4, UResult>(this Func<T1, T2, T3, T4, TResult> F, Func<U1, T1> ArgConv1, Func<U2, T2> ArgConv2, Func<U3, T3> ArgConv3, Func<U4, T4> ArgConv4, Func<TResult, UResult> ResConv) {
+    return (arg1, arg2, arg3, arg4) => ResConv(F(ArgConv1(arg1), ArgConv2(arg2), ArgConv3(arg3), ArgConv4(arg4)));
+  }
 }
 // end of class FuncExtensions
-namespace SpecsTools {
-
-  public partial class __default {
-    public static bool Contains(Dafny.ISequence<Dafny.Rune> haystack, Dafny.ISequence<Dafny.Rune> needle)
-    {
-      if ((new BigInteger((needle).Count)).Sign == 0) {
-        return true;
-      } else if ((new BigInteger((haystack).Count)) < (new BigInteger((needle).Count))) {
-        return false;
-      } else {
-        return (((haystack).Subsequence(BigInteger.Zero, new BigInteger((needle).Count))).Equals(needle)) || (SpecsTools.__default.Contains((haystack).Drop(BigInteger.One), needle));
-      }
-    }
-    public static Dafny.ISequence<Dafny.Rune> Link(Dafny.ISequence<Dafny.Rune> linkLabel, Dafny.ISequence<Dafny.Rune> url)
-    {
-      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<a href=\""), url), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\">")), linkLabel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</a>"));
-    }
-  }
-} // end of namespace SpecsTools
-namespace FormicProofHelpers {
-
-} // end of namespace FormicProofHelpers
 namespace DB {
 
+  public partial class __default {
+    public static DB._ITable TableOf(DB._IDbValue row) {
+      DB._IDbValue _source0 = row;
+      {
+        if (_source0.is_DbPersistedUser) {
+          return DB.Table.create_PersistedUserTable();
+        }
+      }
+      {
+        if (_source0.is_DbFormicUser) {
+          return DB.Table.create_FormicUserTable();
+        }
+      }
+      {
+        if (_source0.is_DbLaunchToken) {
+          return DB.Table.create_LaunchTokenTable();
+        }
+      }
+      {
+        return DB.Table.create_SessionTable();
+      }
+    }
+    public static DB._IDbKey KeyOf(DB._IDbValue row) {
+      DB._IDbValue _source0 = row;
+      {
+        if (_source0.is_DbPersistedUser) {
+          DB._IPersistedUser _0_persistedUser = _source0.dtor_persistedUser;
+          return DB.DbKey.create_PersistedUserKey((_0_persistedUser).dtor_email);
+        }
+      }
+      {
+        if (_source0.is_DbFormicUser) {
+          DB._IUserCreds _1_formicUser = _source0.dtor_formicUser;
+          return DB.DbKey.create_FormicUserKey((_1_formicUser).dtor_id);
+        }
+      }
+      {
+        if (_source0.is_DbLaunchToken) {
+          DB._ILaunchToken _2_launchToken = _source0.dtor_launchToken;
+          return DB.DbKey.create_LaunchTokenKey((_2_launchToken).dtor_id);
+        }
+      }
+      {
+        DB._ISession _3_session = _source0.dtor_session;
+        return DB.DbKey.create_SessionKey((_3_session).dtor_id);
+      }
+    }
+    public static bool ValidChange(DB._IDbChange change) {
+      DB._IDbChange _source0 = change;
+      {
+        if (_source0.is_Put) {
+          return true;
+        }
+      }
+      {
+        if (_source0.is_Edit) {
+          DB._IDbKey _0_key = _source0.dtor_key;
+          DB._IDbValue _1_newValue = _source0.dtor_newValue;
+          return object.Equals(_0_key, DB.__default.KeyOf(_1_newValue));
+        }
+      }
+      {
+        return true;
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> FilterEntries(Dafny.ISequence<DB._IDbValue> entries, DB._IDbKey key)
+    {
+      Dafny.ISequence<DB._IDbValue> _0___accumulator = Dafny.Sequence<DB._IDbValue>.FromElements();
+    TAIL_CALL_START: ;
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return Dafny.Sequence<DB._IDbValue>.Concat(_0___accumulator, Dafny.Sequence<DB._IDbValue>.FromElements());
+      } else if (object.Equals(DB.__default.KeyOf((entries).Select(BigInteger.Zero)), key)) {
+        Dafny.ISequence<DB._IDbValue> _in0 = (entries).Drop(BigInteger.One);
+        DB._IDbKey _in1 = key;
+        entries = _in0;
+        key = _in1;
+        goto TAIL_CALL_START;
+      } else {
+        _0___accumulator = Dafny.Sequence<DB._IDbValue>.Concat(_0___accumulator, Dafny.Sequence<DB._IDbValue>.FromElements((entries).Select(BigInteger.Zero)));
+        Dafny.ISequence<DB._IDbValue> _in2 = (entries).Drop(BigInteger.One);
+        DB._IDbKey _in3 = key;
+        entries = _in2;
+        key = _in3;
+        goto TAIL_CALL_START;
+      }
+    }
+    public static bool HasKey(Dafny.ISequence<DB._IDbValue> entries, DB._IDbKey key)
+    {
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return false;
+      } else {
+        return (object.Equals(DB.__default.KeyOf((entries).Select(BigInteger.Zero)), key)) || (DB.__default.HasKey((entries).Drop(BigInteger.One), key));
+      }
+    }
+    public static bool TableHasAny(Dafny.ISequence<DB._IDbValue> entries, DB._ITable table)
+    {
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return false;
+      } else {
+        return (object.Equals(DB.__default.TableOf((entries).Select(BigInteger.Zero)), table)) || (DB.__default.TableHasAny((entries).Drop(BigInteger.One), table));
+      }
+    }
+    public static bool TableHasKey(Dafny.ISequence<DB._IDbValue> entries, DB._ITable table, DB._IDbKey key)
+    {
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return false;
+      } else {
+        return ((object.Equals(DB.__default.TableOf((entries).Select(BigInteger.Zero)), table)) && (object.Equals(DB.__default.KeyOf((entries).Select(BigInteger.Zero)), key))) || (DB.__default.TableHasKey((entries).Drop(BigInteger.One), table, key));
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> RowsForTable(Dafny.ISequence<DB._IDbValue> entries, DB._ITable table)
+    {
+      Dafny.ISequence<DB._IDbValue> _0___accumulator = Dafny.Sequence<DB._IDbValue>.FromElements();
+    TAIL_CALL_START: ;
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return Dafny.Sequence<DB._IDbValue>.Concat(_0___accumulator, Dafny.Sequence<DB._IDbValue>.FromElements());
+      } else if (object.Equals(DB.__default.TableOf((entries).Select(BigInteger.Zero)), table)) {
+        _0___accumulator = Dafny.Sequence<DB._IDbValue>.Concat(_0___accumulator, Dafny.Sequence<DB._IDbValue>.FromElements((entries).Select(BigInteger.Zero)));
+        Dafny.ISequence<DB._IDbValue> _in0 = (entries).Drop(BigInteger.One);
+        DB._ITable _in1 = table;
+        entries = _in0;
+        table = _in1;
+        goto TAIL_CALL_START;
+      } else {
+        Dafny.ISequence<DB._IDbValue> _in2 = (entries).Drop(BigInteger.One);
+        DB._ITable _in3 = table;
+        entries = _in2;
+        table = _in3;
+        goto TAIL_CALL_START;
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> RowsForKey(Dafny.ISequence<DB._IDbValue> entries, DB._IDbKey key)
+    {
+    TAIL_CALL_START: ;
+      if ((new BigInteger((entries).Count)).Sign == 0) {
+        return Dafny.Sequence<DB._IDbValue>.FromElements();
+      } else if (object.Equals(DB.__default.KeyOf((entries).Select(BigInteger.Zero)), key)) {
+        return Dafny.Sequence<DB._IDbValue>.FromElements((entries).Select(BigInteger.Zero));
+      } else {
+        Dafny.ISequence<DB._IDbValue> _in0 = (entries).Drop(BigInteger.One);
+        DB._IDbKey _in1 = key;
+        entries = _in0;
+        key = _in1;
+        goto TAIL_CALL_START;
+      }
+    }
+    public static bool EvalPred(Dafny.ISequence<DB._IDbValue> entries, DB._IDbPred pred)
+    {
+      DB._IDbPred _source0 = pred;
+      {
+        if (_source0.is_TruePred) {
+          return true;
+        }
+      }
+      {
+        if (_source0.is_FalsePred) {
+          return false;
+        }
+      }
+      {
+        if (_source0.is_HasKeyPred) {
+          DB._IDbKey _0_key = _source0.dtor_key;
+          return DB.__default.HasKey(entries, _0_key);
+        }
+      }
+      {
+        if (_source0.is_TableHasAnyPred) {
+          DB._ITable _1_table = _source0.dtor_table;
+          return DB.__default.TableHasAny(entries, _1_table);
+        }
+      }
+      {
+        if (_source0.is_TableHasKeyPred) {
+          DB._ITable _2_table = _source0.dtor_table;
+          DB._IDbKey _3_key = _source0.dtor_key;
+          return DB.__default.TableHasKey(entries, _2_table, _3_key);
+        }
+      }
+      {
+        if (_source0.is_NotPred) {
+          DB._IDbPred _4_inner = _source0.dtor_pred;
+          return !(DB.__default.EvalPred(entries, _4_inner));
+        }
+      }
+      {
+        if (_source0.is_AndPred) {
+          DB._IDbPred _5_left = _source0.dtor_left;
+          DB._IDbPred _6_right = _source0.dtor_right;
+          return (DB.__default.EvalPred(entries, _5_left)) && (DB.__default.EvalPred(entries, _6_right));
+        }
+      }
+      {
+        DB._IDbPred _7_left = _source0.dtor_left;
+        DB._IDbPred _8_right = _source0.dtor_right;
+        return (DB.__default.EvalPred(entries, _7_left)) || (DB.__default.EvalPred(entries, _8_right));
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> EvalQuery(Dafny.ISequence<DB._IDbValue> entries, DB._IDbQuery query)
+    {
+      DB._IDbQuery _source0 = query;
+      {
+        if (_source0.is_AllRows) {
+          return entries;
+        }
+      }
+      {
+        if (_source0.is_RowsInTable) {
+          DB._ITable _0_table = _source0.dtor_table;
+          return DB.__default.RowsForTable(entries, _0_table);
+        }
+      }
+      {
+        if (_source0.is_RowWithKey) {
+          DB._IDbKey _1_key = _source0.dtor_key;
+          return DB.__default.RowsForKey(entries, _1_key);
+        }
+      }
+      {
+        DB._IDbPred _2_pred = _source0.dtor_pred;
+        if (DB.__default.EvalPred(entries, _2_pred)) {
+          return entries;
+        } else {
+          return Dafny.Sequence<DB._IDbValue>.FromElements();
+        }
+      }
+    }
+    public static BigInteger ProgramSize(DB._IDbProgram program) {
+      DB._IDbProgram _source0 = program;
+      {
+        if (_source0.is_Return) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_Seq) {
+          DB._IDbProgram _0_p1 = _source0.dtor_p1;
+          DB._IDbProgram _1_p2 = _source0.dtor_p2;
+          return ((BigInteger.One) + (DB.__default.ProgramSize(_0_p1))) + (DB.__default.ProgramSize(_1_p2));
+        }
+      }
+      {
+        if (_source0.is_Lookup) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_Exists) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_Insert) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_Update) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_DeleteRow) {
+          return BigInteger.One;
+        }
+      }
+      {
+        if (_source0.is_If) {
+          DB._IDbProgram _2_thenP = _source0.dtor_thenP;
+          DB._IDbProgram _3_elseP = _source0.dtor_elseP;
+          return ((BigInteger.One) + (DB.__default.ProgramSize(_2_thenP))) + (DB.__default.ProgramSize(_3_elseP));
+        }
+      }
+      {
+        DB._IDbProgram _4_body = _source0.dtor_body;
+        return (BigInteger.One) + (DB.__default.ProgramSize(_4_body));
+      }
+    }
+    public static Dafny.ISequence<DB._IDbChange> PatchToChange(DB._IDbKey key, DB._IDbValue patch)
+    {
+      DB._IDbValue _source0 = patch;
+      {
+        DB._IDbValue _0_row = _source0;
+        if (object.Equals(DB.__default.KeyOf(_0_row), key)) {
+          return Dafny.Sequence<DB._IDbChange>.FromElements(DB.DbChange.create_Edit(key, _0_row));
+        } else {
+          return Dafny.Sequence<DB._IDbChange>.FromElements();
+        }
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> ExecuteOperation(Dafny.ISequence<DB._IDbValue> entries, DB._IDbChange change)
+    {
+      DB._IDbChange _source0 = change;
+      {
+        if (_source0.is_Put) {
+          DB._IDbValue _0_row = _source0.dtor_row;
+          return Dafny.Sequence<DB._IDbValue>.Concat(DB.__default.FilterEntries(entries, DB.__default.KeyOf(_0_row)), Dafny.Sequence<DB._IDbValue>.FromElements(_0_row));
+        }
+      }
+      {
+        if (_source0.is_Edit) {
+          DB._IDbKey _1_key = _source0.dtor_key;
+          DB._IDbValue _2_newValue = _source0.dtor_newValue;
+          if (object.Equals(_1_key, DB.__default.KeyOf(_2_newValue))) {
+            return Dafny.Sequence<DB._IDbValue>.Concat(DB.__default.FilterEntries(entries, _1_key), Dafny.Sequence<DB._IDbValue>.FromElements(_2_newValue));
+          } else {
+            return entries;
+          }
+        }
+      }
+      {
+        DB._IDbKey _3_key = _source0.dtor_key;
+        return DB.__default.FilterEntries(entries, _3_key);
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> ExecuteOperations(Dafny.ISequence<DB._IDbValue> entries, Dafny.ISequence<DB._IDbChange> changes)
+    {
+    TAIL_CALL_START: ;
+      if ((new BigInteger((changes).Count)).Sign == 0) {
+        return entries;
+      } else {
+        Dafny.ISequence<DB._IDbValue> _in0 = DB.__default.ExecuteOperation(entries, (changes).Select(BigInteger.Zero));
+        Dafny.ISequence<DB._IDbChange> _in1 = (changes).Drop(BigInteger.One);
+        entries = _in0;
+        changes = _in1;
+        goto TAIL_CALL_START;
+      }
+    }
+    public static Dafny.ISequence<DB._IDbChange> ProgramOperationsForRows(Dafny.ISequence<DB._IDbValue> entries, Dafny.ISequence<DB._IDbValue> rows, DB._IDbProgram body)
+    {
+      if ((new BigInteger((rows).Count)).Sign == 0) {
+        return Dafny.Sequence<DB._IDbChange>.FromElements();
+      } else {
+        Dafny.ISequence<DB._IDbChange> _0_ops = DB.__default.ProgramOperations(entries, body);
+        return Dafny.Sequence<DB._IDbChange>.Concat(_0_ops, DB.__default.ProgramOperationsForRows(DB.__default.ExecuteOperations(entries, _0_ops), (rows).Drop(BigInteger.One), body));
+      }
+    }
+    public static Dafny.ISequence<DB._IDbChange> ProgramOperations(Dafny.ISequence<DB._IDbValue> entries, DB._IDbProgram program)
+    {
+      DB._IDbProgram _source0 = program;
+      {
+        if (_source0.is_Return) {
+          return Dafny.Sequence<DB._IDbChange>.FromElements();
+        }
+      }
+      {
+        if (_source0.is_Seq) {
+          DB._IDbProgram _0_p1 = _source0.dtor_p1;
+          DB._IDbProgram _1_p2 = _source0.dtor_p2;
+          Dafny.ISequence<DB._IDbChange> _2_ops1 = DB.__default.ProgramOperations(entries, _0_p1);
+          return Dafny.Sequence<DB._IDbChange>.Concat(_2_ops1, DB.__default.ProgramOperations(DB.__default.ExecuteOperations(entries, _2_ops1), _1_p2));
+        }
+      }
+      {
+        if (_source0.is_Lookup) {
+          return Dafny.Sequence<DB._IDbChange>.FromElements();
+        }
+      }
+      {
+        if (_source0.is_Exists) {
+          return Dafny.Sequence<DB._IDbChange>.FromElements();
+        }
+      }
+      {
+        if (_source0.is_Insert) {
+          DB._IDbValue _3_row = _source0.dtor_row;
+          return Dafny.Sequence<DB._IDbChange>.FromElements(DB.DbChange.create_Put(_3_row));
+        }
+      }
+      {
+        if (_source0.is_Update) {
+          DB._IDbKey _4_key = _source0.dtor_key;
+          DB._IDbValue _5_patch = _source0.dtor_patch;
+          return DB.__default.PatchToChange(_4_key, _5_patch);
+        }
+      }
+      {
+        if (_source0.is_DeleteRow) {
+          DB._IDbKey _6_key = _source0.dtor_key;
+          return Dafny.Sequence<DB._IDbChange>.FromElements(DB.DbChange.create_Delete(_6_key));
+        }
+      }
+      {
+        if (_source0.is_If) {
+          DB._IDbPred _7_cond = _source0.dtor_cond;
+          DB._IDbProgram _8_thenP = _source0.dtor_thenP;
+          DB._IDbProgram _9_elseP = _source0.dtor_elseP;
+          if (DB.__default.EvalPred(entries, _7_cond)) {
+            return DB.__default.ProgramOperations(entries, _8_thenP);
+          } else {
+            return DB.__default.ProgramOperations(entries, _9_elseP);
+          }
+        }
+      }
+      {
+        DB._IDbQuery _10_query = _source0.dtor_query;
+        DB._IDbProgram _11_body = _source0.dtor_body;
+        return DB.__default.ProgramOperationsForRows(entries, DB.__default.EvalQuery(entries, _10_query), _11_body);
+      }
+    }
+    public static Dafny.ISequence<DB._IDbValue> ExecuteProgram(Dafny.ISequence<DB._IDbValue> entries, DB._IDbProgram program)
+    {
+      return DB.__default.ExecuteOperations(entries, DB.__default.ProgramOperations(entries, program));
+    }
+  }
 
   public interface _IDbTimestamp {
     bool is_DbTimestamp { get; }
@@ -6935,6 +7402,135 @@ namespace DB {
     }
   }
 
+  public interface _ITable {
+    bool is_PersistedUserTable { get; }
+    bool is_FormicUserTable { get; }
+    bool is_LaunchTokenTable { get; }
+    bool is_SessionTable { get; }
+    _ITable DowncastClone();
+  }
+  public abstract class Table : _ITable {
+    public Table() {
+    }
+    private static readonly DB._ITable theDefault = create_PersistedUserTable();
+    public static DB._ITable Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._ITable> _TYPE = new Dafny.TypeDescriptor<DB._ITable>(DB.Table.Default());
+    public static Dafny.TypeDescriptor<DB._ITable> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _ITable create_PersistedUserTable() {
+      return new Table_PersistedUserTable();
+    }
+    public static _ITable create_FormicUserTable() {
+      return new Table_FormicUserTable();
+    }
+    public static _ITable create_LaunchTokenTable() {
+      return new Table_LaunchTokenTable();
+    }
+    public static _ITable create_SessionTable() {
+      return new Table_SessionTable();
+    }
+    public bool is_PersistedUserTable { get { return this is Table_PersistedUserTable; } }
+    public bool is_FormicUserTable { get { return this is Table_FormicUserTable; } }
+    public bool is_LaunchTokenTable { get { return this is Table_LaunchTokenTable; } }
+    public bool is_SessionTable { get { return this is Table_SessionTable; } }
+    public static System.Collections.Generic.IEnumerable<_ITable> AllSingletonConstructors {
+      get {
+        yield return Table.create_PersistedUserTable();
+        yield return Table.create_FormicUserTable();
+        yield return Table.create_LaunchTokenTable();
+        yield return Table.create_SessionTable();
+      }
+    }
+    public abstract _ITable DowncastClone();
+  }
+  public class Table_PersistedUserTable : Table {
+    public Table_PersistedUserTable() : base() {
+    }
+    public override _ITable DowncastClone() {
+      if (this is _ITable dt) { return dt; }
+      return new Table_PersistedUserTable();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Table_PersistedUserTable;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Table.PersistedUserTable";
+      return s;
+    }
+  }
+  public class Table_FormicUserTable : Table {
+    public Table_FormicUserTable() : base() {
+    }
+    public override _ITable DowncastClone() {
+      if (this is _ITable dt) { return dt; }
+      return new Table_FormicUserTable();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Table_FormicUserTable;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Table.FormicUserTable";
+      return s;
+    }
+  }
+  public class Table_LaunchTokenTable : Table {
+    public Table_LaunchTokenTable() : base() {
+    }
+    public override _ITable DowncastClone() {
+      if (this is _ITable dt) { return dt; }
+      return new Table_LaunchTokenTable();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Table_LaunchTokenTable;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Table.LaunchTokenTable";
+      return s;
+    }
+  }
+  public class Table_SessionTable : Table {
+    public Table_SessionTable() : base() {
+    }
+    public override _ITable DowncastClone() {
+      if (this is _ITable dt) { return dt; }
+      return new Table_SessionTable();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Table_SessionTable;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Table.SessionTable";
+      return s;
+    }
+  }
+
   public interface _IDbValue {
     bool is_DbPersistedUser { get; }
     bool is_DbFormicUser { get; }
@@ -7108,14 +7704,1272 @@ namespace DB {
     }
   }
 
+  public interface _IDbKey {
+    bool is_PersistedUserKey { get; }
+    bool is_FormicUserKey { get; }
+    bool is_LaunchTokenKey { get; }
+    bool is_SessionKey { get; }
+    Dafny.ISequence<Dafny.Rune> dtor_email { get; }
+    BigInteger dtor_id { get; }
+    _IDbKey DowncastClone();
+  }
+  public abstract class DbKey : _IDbKey {
+    public DbKey() {
+    }
+    private static readonly DB._IDbKey theDefault = create_PersistedUserKey(Dafny.Sequence<Dafny.Rune>.Empty);
+    public static DB._IDbKey Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbKey> _TYPE = new Dafny.TypeDescriptor<DB._IDbKey>(DB.DbKey.Default());
+    public static Dafny.TypeDescriptor<DB._IDbKey> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbKey create_PersistedUserKey(Dafny.ISequence<Dafny.Rune> email) {
+      return new DbKey_PersistedUserKey(email);
+    }
+    public static _IDbKey create_FormicUserKey(BigInteger id) {
+      return new DbKey_FormicUserKey(id);
+    }
+    public static _IDbKey create_LaunchTokenKey(BigInteger id) {
+      return new DbKey_LaunchTokenKey(id);
+    }
+    public static _IDbKey create_SessionKey(BigInteger id) {
+      return new DbKey_SessionKey(id);
+    }
+    public bool is_PersistedUserKey { get { return this is DbKey_PersistedUserKey; } }
+    public bool is_FormicUserKey { get { return this is DbKey_FormicUserKey; } }
+    public bool is_LaunchTokenKey { get { return this is DbKey_LaunchTokenKey; } }
+    public bool is_SessionKey { get { return this is DbKey_SessionKey; } }
+    public Dafny.ISequence<Dafny.Rune> dtor_email {
+      get {
+        var d = this;
+        return ((DbKey_PersistedUserKey)d)._email;
+      }
+    }
+    public BigInteger dtor_id {
+      get {
+        var d = this;
+        if (d is DbKey_FormicUserKey) { return ((DbKey_FormicUserKey)d)._id; }
+        if (d is DbKey_LaunchTokenKey) { return ((DbKey_LaunchTokenKey)d)._id; }
+        return ((DbKey_SessionKey)d)._id;
+      }
+    }
+    public abstract _IDbKey DowncastClone();
+  }
+  public class DbKey_PersistedUserKey : DbKey {
+    public readonly Dafny.ISequence<Dafny.Rune> _email;
+    public DbKey_PersistedUserKey(Dafny.ISequence<Dafny.Rune> email) : base() {
+      this._email = email;
+    }
+    public override _IDbKey DowncastClone() {
+      if (this is _IDbKey dt) { return dt; }
+      return new DbKey_PersistedUserKey(_email);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbKey_PersistedUserKey;
+      return oth != null && object.Equals(this._email, oth._email);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._email));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbKey.PersistedUserKey";
+      s += "(";
+      s += this._email.ToVerbatimString(true);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbKey_FormicUserKey : DbKey {
+    public readonly BigInteger _id;
+    public DbKey_FormicUserKey(BigInteger id) : base() {
+      this._id = id;
+    }
+    public override _IDbKey DowncastClone() {
+      if (this is _IDbKey dt) { return dt; }
+      return new DbKey_FormicUserKey(_id);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbKey_FormicUserKey;
+      return oth != null && this._id == oth._id;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbKey.FormicUserKey";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbKey_LaunchTokenKey : DbKey {
+    public readonly BigInteger _id;
+    public DbKey_LaunchTokenKey(BigInteger id) : base() {
+      this._id = id;
+    }
+    public override _IDbKey DowncastClone() {
+      if (this is _IDbKey dt) { return dt; }
+      return new DbKey_LaunchTokenKey(_id);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbKey_LaunchTokenKey;
+      return oth != null && this._id == oth._id;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbKey.LaunchTokenKey";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbKey_SessionKey : DbKey {
+    public readonly BigInteger _id;
+    public DbKey_SessionKey(BigInteger id) : base() {
+      this._id = id;
+    }
+    public override _IDbKey DowncastClone() {
+      if (this is _IDbKey dt) { return dt; }
+      return new DbKey_SessionKey(_id);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbKey_SessionKey;
+      return oth != null && this._id == oth._id;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._id));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbKey.SessionKey";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._id);
+      s += ")";
+      return s;
+    }
+  }
+
+  public interface _IDbChange {
+    bool is_Put { get; }
+    bool is_Edit { get; }
+    bool is_Delete { get; }
+    DB._IDbValue dtor_row { get; }
+    DB._IDbKey dtor_key { get; }
+    DB._IDbValue dtor_newValue { get; }
+    _IDbChange DowncastClone();
+  }
+  public abstract class DbChange : _IDbChange {
+    public DbChange() {
+    }
+    private static readonly DB._IDbChange theDefault = create_Put(DB.DbValue.Default());
+    public static DB._IDbChange Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbChange> _TYPE = new Dafny.TypeDescriptor<DB._IDbChange>(DB.DbChange.Default());
+    public static Dafny.TypeDescriptor<DB._IDbChange> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbChange create_Put(DB._IDbValue row) {
+      return new DbChange_Put(row);
+    }
+    public static _IDbChange create_Edit(DB._IDbKey key, DB._IDbValue newValue) {
+      return new DbChange_Edit(key, newValue);
+    }
+    public static _IDbChange create_Delete(DB._IDbKey key) {
+      return new DbChange_Delete(key);
+    }
+    public bool is_Put { get { return this is DbChange_Put; } }
+    public bool is_Edit { get { return this is DbChange_Edit; } }
+    public bool is_Delete { get { return this is DbChange_Delete; } }
+    public DB._IDbValue dtor_row {
+      get {
+        var d = this;
+        return ((DbChange_Put)d)._row;
+      }
+    }
+    public DB._IDbKey dtor_key {
+      get {
+        var d = this;
+        if (d is DbChange_Edit) { return ((DbChange_Edit)d)._key; }
+        return ((DbChange_Delete)d)._key;
+      }
+    }
+    public DB._IDbValue dtor_newValue {
+      get {
+        var d = this;
+        return ((DbChange_Edit)d)._newValue;
+      }
+    }
+    public abstract _IDbChange DowncastClone();
+  }
+  public class DbChange_Put : DbChange {
+    public readonly DB._IDbValue _row;
+    public DbChange_Put(DB._IDbValue row) : base() {
+      this._row = row;
+    }
+    public override _IDbChange DowncastClone() {
+      if (this is _IDbChange dt) { return dt; }
+      return new DbChange_Put(_row);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbChange_Put;
+      return oth != null && object.Equals(this._row, oth._row);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._row));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbChange.Put";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._row);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbChange_Edit : DbChange {
+    public readonly DB._IDbKey _key;
+    public readonly DB._IDbValue _newValue;
+    public DbChange_Edit(DB._IDbKey key, DB._IDbValue newValue) : base() {
+      this._key = key;
+      this._newValue = newValue;
+    }
+    public override _IDbChange DowncastClone() {
+      if (this is _IDbChange dt) { return dt; }
+      return new DbChange_Edit(_key, _newValue);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbChange_Edit;
+      return oth != null && object.Equals(this._key, oth._key) && object.Equals(this._newValue, oth._newValue);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._newValue));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbChange.Edit";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._newValue);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbChange_Delete : DbChange {
+    public readonly DB._IDbKey _key;
+    public DbChange_Delete(DB._IDbKey key) : base() {
+      this._key = key;
+    }
+    public override _IDbChange DowncastClone() {
+      if (this is _IDbChange dt) { return dt; }
+      return new DbChange_Delete(_key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbChange_Delete;
+      return oth != null && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbChange.Delete";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+
+  public interface _IPatch {
+    bool is_ReplaceWith { get; }
+    DB._IDbValue dtor_row { get; }
+  }
+  public class Patch : _IPatch {
+    public readonly DB._IDbValue _row;
+    public Patch(DB._IDbValue row) {
+      this._row = row;
+    }
+    public static DB._IDbValue DowncastClone(DB._IDbValue _this) {
+      return _this;
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.Patch;
+      return oth != null && object.Equals(this._row, oth._row);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._row));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.Patch.ReplaceWith";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._row);
+      s += ")";
+      return s;
+    }
+    private static readonly DB._IDbValue theDefault = DB.DbValue.Default();
+    public static DB._IDbValue Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbValue> _TYPE = new Dafny.TypeDescriptor<DB._IDbValue>(DB.DbValue.Default());
+    public static Dafny.TypeDescriptor<DB._IDbValue> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IPatch create(DB._IDbValue row) {
+      return new Patch(row);
+    }
+    public static _IPatch create_ReplaceWith(DB._IDbValue row) {
+      return create(row);
+    }
+    public bool is_ReplaceWith { get { return true; } }
+    public DB._IDbValue dtor_row {
+      get {
+        return this._row;
+      }
+    }
+  }
+
+  public interface _IDbPred {
+    bool is_TruePred { get; }
+    bool is_FalsePred { get; }
+    bool is_HasKeyPred { get; }
+    bool is_TableHasAnyPred { get; }
+    bool is_TableHasKeyPred { get; }
+    bool is_NotPred { get; }
+    bool is_AndPred { get; }
+    bool is_OrPred { get; }
+    DB._IDbKey dtor_key { get; }
+    DB._ITable dtor_table { get; }
+    DB._IDbPred dtor_pred { get; }
+    DB._IDbPred dtor_left { get; }
+    DB._IDbPred dtor_right { get; }
+    _IDbPred DowncastClone();
+  }
+  public abstract class DbPred : _IDbPred {
+    public DbPred() {
+    }
+    private static readonly DB._IDbPred theDefault = create_TruePred();
+    public static DB._IDbPred Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbPred> _TYPE = new Dafny.TypeDescriptor<DB._IDbPred>(DB.DbPred.Default());
+    public static Dafny.TypeDescriptor<DB._IDbPred> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbPred create_TruePred() {
+      return new DbPred_TruePred();
+    }
+    public static _IDbPred create_FalsePred() {
+      return new DbPred_FalsePred();
+    }
+    public static _IDbPred create_HasKeyPred(DB._IDbKey key) {
+      return new DbPred_HasKeyPred(key);
+    }
+    public static _IDbPred create_TableHasAnyPred(DB._ITable table) {
+      return new DbPred_TableHasAnyPred(table);
+    }
+    public static _IDbPred create_TableHasKeyPred(DB._ITable table, DB._IDbKey key) {
+      return new DbPred_TableHasKeyPred(table, key);
+    }
+    public static _IDbPred create_NotPred(DB._IDbPred pred) {
+      return new DbPred_NotPred(pred);
+    }
+    public static _IDbPred create_AndPred(DB._IDbPred left, DB._IDbPred right) {
+      return new DbPred_AndPred(left, right);
+    }
+    public static _IDbPred create_OrPred(DB._IDbPred left, DB._IDbPred right) {
+      return new DbPred_OrPred(left, right);
+    }
+    public bool is_TruePred { get { return this is DbPred_TruePred; } }
+    public bool is_FalsePred { get { return this is DbPred_FalsePred; } }
+    public bool is_HasKeyPred { get { return this is DbPred_HasKeyPred; } }
+    public bool is_TableHasAnyPred { get { return this is DbPred_TableHasAnyPred; } }
+    public bool is_TableHasKeyPred { get { return this is DbPred_TableHasKeyPred; } }
+    public bool is_NotPred { get { return this is DbPred_NotPred; } }
+    public bool is_AndPred { get { return this is DbPred_AndPred; } }
+    public bool is_OrPred { get { return this is DbPred_OrPred; } }
+    public DB._IDbKey dtor_key {
+      get {
+        var d = this;
+        if (d is DbPred_HasKeyPred) { return ((DbPred_HasKeyPred)d)._key; }
+        return ((DbPred_TableHasKeyPred)d)._key;
+      }
+    }
+    public DB._ITable dtor_table {
+      get {
+        var d = this;
+        if (d is DbPred_TableHasAnyPred) { return ((DbPred_TableHasAnyPred)d)._table; }
+        return ((DbPred_TableHasKeyPred)d)._table;
+      }
+    }
+    public DB._IDbPred dtor_pred {
+      get {
+        var d = this;
+        return ((DbPred_NotPred)d)._pred;
+      }
+    }
+    public DB._IDbPred dtor_left {
+      get {
+        var d = this;
+        if (d is DbPred_AndPred) { return ((DbPred_AndPred)d)._left; }
+        return ((DbPred_OrPred)d)._left;
+      }
+    }
+    public DB._IDbPred dtor_right {
+      get {
+        var d = this;
+        if (d is DbPred_AndPred) { return ((DbPred_AndPred)d)._right; }
+        return ((DbPred_OrPred)d)._right;
+      }
+    }
+    public abstract _IDbPred DowncastClone();
+  }
+  public class DbPred_TruePred : DbPred {
+    public DbPred_TruePred() : base() {
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_TruePred();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_TruePred;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.TruePred";
+      return s;
+    }
+  }
+  public class DbPred_FalsePred : DbPred {
+    public DbPred_FalsePred() : base() {
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_FalsePred();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_FalsePred;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.FalsePred";
+      return s;
+    }
+  }
+  public class DbPred_HasKeyPred : DbPred {
+    public readonly DB._IDbKey _key;
+    public DbPred_HasKeyPred(DB._IDbKey key) : base() {
+      this._key = key;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_HasKeyPred(_key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_HasKeyPred;
+      return oth != null && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.HasKeyPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbPred_TableHasAnyPred : DbPred {
+    public readonly DB._ITable _table;
+    public DbPred_TableHasAnyPred(DB._ITable table) : base() {
+      this._table = table;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_TableHasAnyPred(_table);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_TableHasAnyPred;
+      return oth != null && object.Equals(this._table, oth._table);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._table));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.TableHasAnyPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._table);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbPred_TableHasKeyPred : DbPred {
+    public readonly DB._ITable _table;
+    public readonly DB._IDbKey _key;
+    public DbPred_TableHasKeyPred(DB._ITable table, DB._IDbKey key) : base() {
+      this._table = table;
+      this._key = key;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_TableHasKeyPred(_table, _key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_TableHasKeyPred;
+      return oth != null && object.Equals(this._table, oth._table) && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 4;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._table));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.TableHasKeyPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._table);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbPred_NotPred : DbPred {
+    public readonly DB._IDbPred _pred;
+    public DbPred_NotPred(DB._IDbPred pred) : base() {
+      this._pred = pred;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_NotPred(_pred);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_NotPred;
+      return oth != null && object.Equals(this._pred, oth._pred);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 5;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._pred));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.NotPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._pred);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbPred_AndPred : DbPred {
+    public readonly DB._IDbPred _left;
+    public readonly DB._IDbPred _right;
+    public DbPred_AndPred(DB._IDbPred left, DB._IDbPred right) : base() {
+      this._left = left;
+      this._right = right;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_AndPred(_left, _right);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_AndPred;
+      return oth != null && object.Equals(this._left, oth._left) && object.Equals(this._right, oth._right);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 6;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._left));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._right));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.AndPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._left);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._right);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbPred_OrPred : DbPred {
+    public readonly DB._IDbPred _left;
+    public readonly DB._IDbPred _right;
+    public DbPred_OrPred(DB._IDbPred left, DB._IDbPred right) : base() {
+      this._left = left;
+      this._right = right;
+    }
+    public override _IDbPred DowncastClone() {
+      if (this is _IDbPred dt) { return dt; }
+      return new DbPred_OrPred(_left, _right);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbPred_OrPred;
+      return oth != null && object.Equals(this._left, oth._left) && object.Equals(this._right, oth._right);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 7;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._left));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._right));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbPred.OrPred";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._left);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._right);
+      s += ")";
+      return s;
+    }
+  }
+
+  public interface _IDbQuery {
+    bool is_AllRows { get; }
+    bool is_RowsInTable { get; }
+    bool is_RowWithKey { get; }
+    bool is_RowsMatching { get; }
+    DB._ITable dtor_table { get; }
+    DB._IDbKey dtor_key { get; }
+    DB._IDbPred dtor_pred { get; }
+    _IDbQuery DowncastClone();
+  }
+  public abstract class DbQuery : _IDbQuery {
+    public DbQuery() {
+    }
+    private static readonly DB._IDbQuery theDefault = create_AllRows();
+    public static DB._IDbQuery Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbQuery> _TYPE = new Dafny.TypeDescriptor<DB._IDbQuery>(DB.DbQuery.Default());
+    public static Dafny.TypeDescriptor<DB._IDbQuery> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbQuery create_AllRows() {
+      return new DbQuery_AllRows();
+    }
+    public static _IDbQuery create_RowsInTable(DB._ITable table) {
+      return new DbQuery_RowsInTable(table);
+    }
+    public static _IDbQuery create_RowWithKey(DB._IDbKey key) {
+      return new DbQuery_RowWithKey(key);
+    }
+    public static _IDbQuery create_RowsMatching(DB._IDbPred pred) {
+      return new DbQuery_RowsMatching(pred);
+    }
+    public bool is_AllRows { get { return this is DbQuery_AllRows; } }
+    public bool is_RowsInTable { get { return this is DbQuery_RowsInTable; } }
+    public bool is_RowWithKey { get { return this is DbQuery_RowWithKey; } }
+    public bool is_RowsMatching { get { return this is DbQuery_RowsMatching; } }
+    public DB._ITable dtor_table {
+      get {
+        var d = this;
+        return ((DbQuery_RowsInTable)d)._table;
+      }
+    }
+    public DB._IDbKey dtor_key {
+      get {
+        var d = this;
+        return ((DbQuery_RowWithKey)d)._key;
+      }
+    }
+    public DB._IDbPred dtor_pred {
+      get {
+        var d = this;
+        return ((DbQuery_RowsMatching)d)._pred;
+      }
+    }
+    public abstract _IDbQuery DowncastClone();
+  }
+  public class DbQuery_AllRows : DbQuery {
+    public DbQuery_AllRows() : base() {
+    }
+    public override _IDbQuery DowncastClone() {
+      if (this is _IDbQuery dt) { return dt; }
+      return new DbQuery_AllRows();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbQuery_AllRows;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbQuery.AllRows";
+      return s;
+    }
+  }
+  public class DbQuery_RowsInTable : DbQuery {
+    public readonly DB._ITable _table;
+    public DbQuery_RowsInTable(DB._ITable table) : base() {
+      this._table = table;
+    }
+    public override _IDbQuery DowncastClone() {
+      if (this is _IDbQuery dt) { return dt; }
+      return new DbQuery_RowsInTable(_table);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbQuery_RowsInTable;
+      return oth != null && object.Equals(this._table, oth._table);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._table));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbQuery.RowsInTable";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._table);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbQuery_RowWithKey : DbQuery {
+    public readonly DB._IDbKey _key;
+    public DbQuery_RowWithKey(DB._IDbKey key) : base() {
+      this._key = key;
+    }
+    public override _IDbQuery DowncastClone() {
+      if (this is _IDbQuery dt) { return dt; }
+      return new DbQuery_RowWithKey(_key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbQuery_RowWithKey;
+      return oth != null && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbQuery.RowWithKey";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbQuery_RowsMatching : DbQuery {
+    public readonly DB._IDbPred _pred;
+    public DbQuery_RowsMatching(DB._IDbPred pred) : base() {
+      this._pred = pred;
+    }
+    public override _IDbQuery DowncastClone() {
+      if (this is _IDbQuery dt) { return dt; }
+      return new DbQuery_RowsMatching(_pred);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbQuery_RowsMatching;
+      return oth != null && object.Equals(this._pred, oth._pred);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._pred));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbQuery.RowsMatching";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._pred);
+      s += ")";
+      return s;
+    }
+  }
+
+  public interface _IDbProgram {
+    bool is_Return { get; }
+    bool is_Seq { get; }
+    bool is_Lookup { get; }
+    bool is_Exists { get; }
+    bool is_Insert { get; }
+    bool is_Update { get; }
+    bool is_DeleteRow { get; }
+    bool is_If { get; }
+    bool is_ForEach { get; }
+    DB._IDbProgram dtor_p1 { get; }
+    DB._IDbProgram dtor_p2 { get; }
+    DB._ITable dtor_table { get; }
+    DB._IDbKey dtor_key { get; }
+    DB._IDbPred dtor_pred { get; }
+    DB._IDbValue dtor_row { get; }
+    DB._IDbValue dtor_patch { get; }
+    DB._IDbPred dtor_cond { get; }
+    DB._IDbProgram dtor_thenP { get; }
+    DB._IDbProgram dtor_elseP { get; }
+    DB._IDbQuery dtor_query { get; }
+    DB._IDbProgram dtor_body { get; }
+    _IDbProgram DowncastClone();
+  }
+  public abstract class DbProgram : _IDbProgram {
+    public DbProgram() {
+    }
+    private static readonly DB._IDbProgram theDefault = create_Return();
+    public static DB._IDbProgram Default() {
+      return theDefault;
+    }
+    private static readonly Dafny.TypeDescriptor<DB._IDbProgram> _TYPE = new Dafny.TypeDescriptor<DB._IDbProgram>(DB.DbProgram.Default());
+    public static Dafny.TypeDescriptor<DB._IDbProgram> _TypeDescriptor() {
+      return _TYPE;
+    }
+    public static _IDbProgram create_Return() {
+      return new DbProgram_Return();
+    }
+    public static _IDbProgram create_Seq(DB._IDbProgram p1, DB._IDbProgram p2) {
+      return new DbProgram_Seq(p1, p2);
+    }
+    public static _IDbProgram create_Lookup(DB._ITable table, DB._IDbKey key) {
+      return new DbProgram_Lookup(table, key);
+    }
+    public static _IDbProgram create_Exists(DB._ITable table, DB._IDbPred pred) {
+      return new DbProgram_Exists(table, pred);
+    }
+    public static _IDbProgram create_Insert(DB._IDbValue row) {
+      return new DbProgram_Insert(row);
+    }
+    public static _IDbProgram create_Update(DB._IDbKey key, DB._IDbValue patch) {
+      return new DbProgram_Update(key, patch);
+    }
+    public static _IDbProgram create_DeleteRow(DB._IDbKey key) {
+      return new DbProgram_DeleteRow(key);
+    }
+    public static _IDbProgram create_If(DB._IDbPred cond, DB._IDbProgram thenP, DB._IDbProgram elseP) {
+      return new DbProgram_If(cond, thenP, elseP);
+    }
+    public static _IDbProgram create_ForEach(DB._IDbQuery query, DB._IDbProgram body) {
+      return new DbProgram_ForEach(query, body);
+    }
+    public bool is_Return { get { return this is DbProgram_Return; } }
+    public bool is_Seq { get { return this is DbProgram_Seq; } }
+    public bool is_Lookup { get { return this is DbProgram_Lookup; } }
+    public bool is_Exists { get { return this is DbProgram_Exists; } }
+    public bool is_Insert { get { return this is DbProgram_Insert; } }
+    public bool is_Update { get { return this is DbProgram_Update; } }
+    public bool is_DeleteRow { get { return this is DbProgram_DeleteRow; } }
+    public bool is_If { get { return this is DbProgram_If; } }
+    public bool is_ForEach { get { return this is DbProgram_ForEach; } }
+    public DB._IDbProgram dtor_p1 {
+      get {
+        var d = this;
+        return ((DbProgram_Seq)d)._p1;
+      }
+    }
+    public DB._IDbProgram dtor_p2 {
+      get {
+        var d = this;
+        return ((DbProgram_Seq)d)._p2;
+      }
+    }
+    public DB._ITable dtor_table {
+      get {
+        var d = this;
+        if (d is DbProgram_Lookup) { return ((DbProgram_Lookup)d)._table; }
+        return ((DbProgram_Exists)d)._table;
+      }
+    }
+    public DB._IDbKey dtor_key {
+      get {
+        var d = this;
+        if (d is DbProgram_Lookup) { return ((DbProgram_Lookup)d)._key; }
+        if (d is DbProgram_Update) { return ((DbProgram_Update)d)._key; }
+        return ((DbProgram_DeleteRow)d)._key;
+      }
+    }
+    public DB._IDbPred dtor_pred {
+      get {
+        var d = this;
+        return ((DbProgram_Exists)d)._pred;
+      }
+    }
+    public DB._IDbValue dtor_row {
+      get {
+        var d = this;
+        return ((DbProgram_Insert)d)._row;
+      }
+    }
+    public DB._IDbValue dtor_patch {
+      get {
+        var d = this;
+        return ((DbProgram_Update)d)._patch;
+      }
+    }
+    public DB._IDbPred dtor_cond {
+      get {
+        var d = this;
+        return ((DbProgram_If)d)._cond;
+      }
+    }
+    public DB._IDbProgram dtor_thenP {
+      get {
+        var d = this;
+        return ((DbProgram_If)d)._thenP;
+      }
+    }
+    public DB._IDbProgram dtor_elseP {
+      get {
+        var d = this;
+        return ((DbProgram_If)d)._elseP;
+      }
+    }
+    public DB._IDbQuery dtor_query {
+      get {
+        var d = this;
+        return ((DbProgram_ForEach)d)._query;
+      }
+    }
+    public DB._IDbProgram dtor_body {
+      get {
+        var d = this;
+        return ((DbProgram_ForEach)d)._body;
+      }
+    }
+    public abstract _IDbProgram DowncastClone();
+  }
+  public class DbProgram_Return : DbProgram {
+    public DbProgram_Return() : base() {
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Return();
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Return;
+      return oth != null;
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 0;
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Return";
+      return s;
+    }
+  }
+  public class DbProgram_Seq : DbProgram {
+    public readonly DB._IDbProgram _p1;
+    public readonly DB._IDbProgram _p2;
+    public DbProgram_Seq(DB._IDbProgram p1, DB._IDbProgram p2) : base() {
+      this._p1 = p1;
+      this._p2 = p2;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Seq(_p1, _p2);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Seq;
+      return oth != null && object.Equals(this._p1, oth._p1) && object.Equals(this._p2, oth._p2);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 1;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._p1));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._p2));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Seq";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._p1);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._p2);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_Lookup : DbProgram {
+    public readonly DB._ITable _table;
+    public readonly DB._IDbKey _key;
+    public DbProgram_Lookup(DB._ITable table, DB._IDbKey key) : base() {
+      this._table = table;
+      this._key = key;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Lookup(_table, _key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Lookup;
+      return oth != null && object.Equals(this._table, oth._table) && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 2;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._table));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Lookup";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._table);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_Exists : DbProgram {
+    public readonly DB._ITable _table;
+    public readonly DB._IDbPred _pred;
+    public DbProgram_Exists(DB._ITable table, DB._IDbPred pred) : base() {
+      this._table = table;
+      this._pred = pred;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Exists(_table, _pred);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Exists;
+      return oth != null && object.Equals(this._table, oth._table) && object.Equals(this._pred, oth._pred);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 3;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._table));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._pred));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Exists";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._table);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._pred);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_Insert : DbProgram {
+    public readonly DB._IDbValue _row;
+    public DbProgram_Insert(DB._IDbValue row) : base() {
+      this._row = row;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Insert(_row);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Insert;
+      return oth != null && object.Equals(this._row, oth._row);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 4;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._row));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Insert";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._row);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_Update : DbProgram {
+    public readonly DB._IDbKey _key;
+    public readonly DB._IDbValue _patch;
+    public DbProgram_Update(DB._IDbKey key, DB._IDbValue patch) : base() {
+      this._key = key;
+      this._patch = patch;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_Update(_key, _patch);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_Update;
+      return oth != null && object.Equals(this._key, oth._key) && object.Equals(this._patch, oth._patch);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 5;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._patch));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.Update";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._patch);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_DeleteRow : DbProgram {
+    public readonly DB._IDbKey _key;
+    public DbProgram_DeleteRow(DB._IDbKey key) : base() {
+      this._key = key;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_DeleteRow(_key);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_DeleteRow;
+      return oth != null && object.Equals(this._key, oth._key);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 6;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._key));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.DeleteRow";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._key);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_If : DbProgram {
+    public readonly DB._IDbPred _cond;
+    public readonly DB._IDbProgram _thenP;
+    public readonly DB._IDbProgram _elseP;
+    public DbProgram_If(DB._IDbPred cond, DB._IDbProgram thenP, DB._IDbProgram elseP) : base() {
+      this._cond = cond;
+      this._thenP = thenP;
+      this._elseP = elseP;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_If(_cond, _thenP, _elseP);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_If;
+      return oth != null && object.Equals(this._cond, oth._cond) && object.Equals(this._thenP, oth._thenP) && object.Equals(this._elseP, oth._elseP);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 7;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._cond));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._thenP));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._elseP));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.If";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._cond);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._thenP);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._elseP);
+      s += ")";
+      return s;
+    }
+  }
+  public class DbProgram_ForEach : DbProgram {
+    public readonly DB._IDbQuery _query;
+    public readonly DB._IDbProgram _body;
+    public DbProgram_ForEach(DB._IDbQuery query, DB._IDbProgram body) : base() {
+      this._query = query;
+      this._body = body;
+    }
+    public override _IDbProgram DowncastClone() {
+      if (this is _IDbProgram dt) { return dt; }
+      return new DbProgram_ForEach(_query, _body);
+    }
+    public override bool Equals(object other) {
+      var oth = other as DB.DbProgram_ForEach;
+      return oth != null && object.Equals(this._query, oth._query) && object.Equals(this._body, oth._body);
+    }
+    public override int GetHashCode() {
+      ulong hash = 5381;
+      hash = ((hash << 5) + hash) + 8;
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._query));
+      hash = ((hash << 5) + hash) + ((ulong)Dafny.Helpers.GetHashCode(this._body));
+      return (int) hash;
+    }
+    public override string ToString() {
+      string s = "DB.DbProgram.ForEach";
+      s += "(";
+      s += Dafny.Helpers.ToString(this._query);
+      s += ", ";
+      s += Dafny.Helpers.ToString(this._body);
+      s += ")";
+      return s;
+    }
+  }
+
   public partial class Database {
     public Database() {
-      this.entries = Dafny.Sequence<DB._IDbValue>.Empty;
+      this.operations = Dafny.Sequence<DB._IDbChange>.Empty;
     }
-    public Dafny.ISequence<DB._IDbValue> entries {get; set;}
+    public Dafny.ISequence<DB._IDbChange> operations {get; set;}
     public void __ctor()
     {
-      (this).entries = Dafny.Sequence<DB._IDbValue>.FromElements();
+      (this).operations = Dafny.Sequence<DB._IDbChange>.FromElements();
+    }
+    public void ApplyOperations(Dafny.ISequence<DB._IDbChange> changes)
+    {
+      (this).operations = Dafny.Sequence<DB._IDbChange>.Concat(this.operations, changes);
+    }
+    public Dafny.ISequence<DB._IDbChange> GetOperations()
+    {
+      Dafny.ISequence<DB._IDbChange> ops = Dafny.Sequence<DB._IDbChange>.Empty;
+      ops = this.operations;
+      return ops;
     }
   }
 } // end of namespace DB
@@ -7342,16 +9196,24 @@ namespace DuctTools {
     }
   }
 
-  public interface IGenerator {
-    DB.Database db { get; set; }
-    void SetDb(DB.Database db);
-    bool PreCondition(DuctTools._IUserInfo u, DB.Database db);
-    DuctTools._IReturnType Generate(DuctTools._IUserInfo user);
+  public interface IGeneratorSpec {
+    bool PreCondition(DuctTools._IUserInfo u);
   }
-  public class _Companion_IGenerator {
-    public static void SetDb(DuctTools.IGenerator _this, DB.Database db)
+  public class _Companion_IGeneratorSpec {
+  }
+
+  public interface IGeneratorCore : DuctTools.IGeneratorSpec {
+    DB._IDbProgram Program(DuctTools._IUserInfo u);
+    DuctTools._IReturnType Response(DuctTools._IUserInfo u);
+    void Generate(DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog);
+  }
+  public class _Companion_IGeneratorCore {
+    public static void Generate(DuctTools.IGeneratorCore _this, DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog)
     {
-      (_this).db = db;
+      payload = DuctTools.ReturnType.Default();
+      prog = DB.DbProgram.Default();
+      payload = (_this).Response(u);
+      prog = (_this).Program(u);
     }
   }
 
@@ -7359,12 +9221,12 @@ namespace DuctTools {
     public ApiEndpoint() {
       this.apiUrl = Dafny.Sequence<Dafny.Rune>.Empty;
       this.returnType = DuctTools.ReturnType.Default();
-      this.generator = default(DuctTools.IGenerator);
+      this.generator = default(DuctTools.IGeneratorCore);
     }
     public Dafny.ISequence<Dafny.Rune> apiUrl {get; set;}
     public DuctTools._IReturnType returnType {get; set;}
-    public DuctTools.IGenerator generator {get; set;}
-    public void __ctor(Dafny.ISequence<Dafny.Rune> apiUrl, DuctTools._IReturnType rt, DuctTools.IGenerator generator)
+    public DuctTools.IGeneratorCore generator {get; set;}
+    public void __ctor(Dafny.ISequence<Dafny.Rune> apiUrl, DuctTools._IReturnType rt, DuctTools.IGeneratorCore generator)
     {
       (this).apiUrl = apiUrl;
       (this).returnType = rt;
@@ -7399,14 +9261,32 @@ namespace DuctTools {
     }
   }
 } // end of namespace DuctTools
+namespace SpecsTools {
+
+  public partial class __default {
+    public static bool Contains(Dafny.ISequence<Dafny.Rune> haystack, Dafny.ISequence<Dafny.Rune> needle)
+    {
+      if ((new BigInteger((needle).Count)).Sign == 0) {
+        return true;
+      } else if ((new BigInteger((haystack).Count)) < (new BigInteger((needle).Count))) {
+        return false;
+      } else {
+        return (((haystack).Subsequence(BigInteger.Zero, new BigInteger((needle).Count))).Equals(needle)) || (SpecsTools.__default.Contains((haystack).Drop(BigInteger.One), needle));
+      }
+    }
+    public static Dafny.ISequence<Dafny.Rune> Link(Dafny.ISequence<Dafny.Rune> linkLabel, Dafny.ISequence<Dafny.Rune> url)
+    {
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<a href=\""), url), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\">")), linkLabel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</a>"));
+    }
+  }
+} // end of namespace SpecsTools
 namespace DuctSpecs {
 
   public partial class __default {
-    public static bool LandingPagePre(DuctTools._IUserInfo ctx, DB.Database db)
-    {
+    public static bool LandingPagePre(DuctTools._IUserInfo ctx) {
       return ((((((((((((!((ctx).dtor_name).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_name, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_email, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")))))) && (!(SpecsTools.__default.Contains((ctx).dtor_picture, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))));
     }
-    public static bool LandingPagePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    public static bool LandingPagePayloadPost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload)
     {
       var _pat_let_tv0 = ctx;
       var _pat_let_tv1 = ctx;
@@ -7417,297 +9297,249 @@ namespace DuctSpecs {
       var _pat_let_tv6 = ctx;
       return ((payload).is_Content) && (Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>((payload).dtor_body, _pat_let0_0 => Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>(_pat_let0_0, _0_html => (((((!(_0_html).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (SpecsTools.__default.Contains(_0_html, (_pat_let_tv0).dtor_name))) && ((((_pat_let_tv1).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv2).dtor_email)))) && ((((_pat_let_tv3).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv4).dtor_picture)))) && (((_pat_let_tv5).dtor_authenticated) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"))))))) && ((!((_pat_let_tv6).dtor_authenticated)) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))))));
     }
-    public static bool LoginPost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    public static bool LandingPagePost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
-      return object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")));
+      return (DuctSpecs.__default.LandingPagePayloadPost(ctx, payload)) && ((after).Equals(before));
     }
-    public static bool SecurePost(DuctTools._IUserInfo ctx, DuctTools._IReturnType payload, DB.Database db)
+    public static bool LoginPost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
-      return (!((ctx).dtor_authenticated) || ((((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, (ctx).dtor_name))) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated"))))) && (!(!((ctx).dtor_authenticated)) || (((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are not authenticated")))));
+      return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")))) && ((after).Equals(before));
+    }
+    public static bool SecurePost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
+    {
+      return ((after).Equals(before)) && ((((ctx).dtor_authenticated) ? ((((payload).is_Content) && (SpecsTools.__default.Contains((payload).dtor_body, (ctx).dtor_name))) && (SpecsTools.__default.Contains((payload).dtor_body, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated")))) : (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"))))));
+    }
+    public static Dafny.ISequence<DB._IDbChange> SaveUserOperations(DuctTools._IUserInfo ctx) {
+      if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
+        return Dafny.Sequence<DB._IDbChange>.FromElements(DB.DbChange.create_Put(DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture))));
+      } else {
+        return Dafny.Sequence<DB._IDbChange>.FromElements();
+      }
+    }
+    public static bool SaveUserPost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
+    {
+      if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
+        DB._IDbValue _0_row = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
+        return (object.Equals(payload, DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")))) && ((after).Equals(Dafny.Sequence<DB._IDbValue>.Concat(DB.__default.FilterEntries(before, DB.DbKey.create_PersistedUserKey((ctx).dtor_email)), Dafny.Sequence<DB._IDbValue>.FromElements(_0_row))));
+      } else {
+        return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")))) && ((after).Equals(before));
+      }
+    }
+  }
+
+  public interface LandingPageSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+  }
+  public class _Companion_LandingPageSpec {
+    public static bool PreCondition(DuctSpecs.LandingPageSpec _this, DuctTools._IUserInfo u) {
+      return DuctSpecs.__default.LandingPagePre(u);
+    }
+  }
+
+  public interface LoginChallengePageSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+  }
+  public class _Companion_LoginChallengePageSpec {
+    public static bool PreCondition(DuctSpecs.LoginChallengePageSpec _this, DuctTools._IUserInfo u) {
+      return true;
+    }
+  }
+
+  public interface SaveUserPageSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+  }
+  public class _Companion_SaveUserPageSpec {
+    public static bool PreCondition(DuctSpecs.SaveUserPageSpec _this, DuctTools._IUserInfo u) {
+      return true;
+    }
+  }
+
+  public interface SecurePageSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+  }
+  public class _Companion_SecurePageSpec {
+    public static bool PreCondition(DuctSpecs.SecurePageSpec _this, DuctTools._IUserInfo u) {
+      return true;
     }
   }
 } // end of namespace DuctSpecs
-namespace DuctImpl {
+namespace DuctLandingImpl {
 
-
-  public partial class FormicLandingPage : DuctTools.IGenerator {
-    public FormicLandingPage() {
-      this._db = default(DB.Database);
-    }
-    public DB.Database _db {get; set;}
-    public DB.Database db {
-      get {
-        return this._db;
-      }
-      set {
-        this._db = value;
-      }
-    }
-    public void SetDb(DB.Database db)
-    {
-      DuctTools._Companion_IGenerator.SetDb(this, db);
-    }
-    public void __ctor()
-    {
-    }
-    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
-    {
-      return DuctSpecs.__default.LandingPagePre(u, db);
-    }
-    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
-    {
-      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
-      Dafny.ISequence<Dafny.Rune> _0_status;
+  public partial class __default {
+    public static Dafny.ISequence<Dafny.Rune> LandingPageStatus(DuctTools._IUserInfo ctx) {
       if ((ctx).dtor_authenticated) {
-        _0_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in");
       } else {
-        _0_status = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous");
       }
-      Dafny.ISequence<Dafny.Rune> _1_action;
+    }
+    public static Dafny.ISequence<Dafny.Rune> LandingPageAction(DuctTools._IUserInfo ctx) {
       if ((ctx).dtor_authenticated) {
-        _1_action = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+        return SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
       } else {
-        _1_action = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
+        return SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
       }
-      Dafny.ISequence<Dafny.Rune> _2_statusPiece;
-      _2_statusPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("status|"), _0_status);
-      Dafny.ISequence<Dafny.Rune> _3_userPiece;
-      _3_userPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user|"), (ctx).dtor_name);
-      Dafny.ISequence<Dafny.Rune> _4_emailPiece;
-      _4_emailPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email|"), (ctx).dtor_email);
-      Dafny.ISequence<Dafny.Rune> _5_picturePiece;
-      _5_picturePiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture|"), (ctx).dtor_picture);
-      Dafny.ISequence<Dafny.Rune> _6_actionPiece;
-      _6_actionPiece = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action|"), _1_action);
-      Dafny.ISequence<Dafny.Rune> _7_closingPiece;
-      _7_closingPiece = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</html>");
-      Dafny.ISequence<Dafny.Rune> _8_tail1;
-      _8_tail1 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_6_actionPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _9_tail2;
-      _9_tail2 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_5_picturePiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _8_tail1);
-      Dafny.ISequence<Dafny.Rune> _10_tail3;
-      _10_tail3 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_4_emailPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _9_tail2);
-      Dafny.ISequence<Dafny.Rune> _11_tail4;
-      _11_tail4 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_3_userPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _10_tail3);
-      Dafny.ISequence<Dafny.Rune> _12_tail5;
-      _12_tail5 = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_statusPiece, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _11_tail4);
-      Dafny.ISequence<Dafny.Rune> _13_picturePanel;
+    }
+    public static Dafny.ISequence<Dafny.Rune> LandingPagePicturePanel(DuctTools._IUserInfo ctx) {
       if (((ctx).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        _13_picturePanel = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"avatar avatar-fallback\">F</div>");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"avatar avatar-fallback\">F</div>");
       } else {
-        _13_picturePanel = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"avatar\"><img src=\""), (ctx).dtor_picture), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\" alt=\"")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\" /></div>"));
+        return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"avatar\"><img src=\""), (ctx).dtor_picture), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\" alt=\"")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("\" /></div>"));
       }
-      Dafny.ISequence<Dafny.Rune> _14_emailPanel;
+    }
+    public static Dafny.ISequence<Dafny.Rune> LandingPageEmailPanel(DuctTools._IUserInfo ctx) {
       if (((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        _14_emailPanel = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value muted\">No email linked</span>");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value muted\">No email linked</span>");
       } else {
-        _14_emailPanel = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">"), (ctx).dtor_email), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span>"));
+        return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">"), (ctx).dtor_email), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span>"));
       }
-      Dafny.ISequence<Dafny.Rune> _15_pictureMeta;
+    }
+    public static Dafny.ISequence<Dafny.Rune> LandingPagePictureMeta(DuctTools._IUserInfo ctx) {
       if (((ctx).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        _15_pictureMeta = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value muted\">No profile photo</span>");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value muted\">No profile photo</span>");
       } else {
-        _15_pictureMeta = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">Profile image connected</span>");
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<span class=\"meta-value\">Profile image connected</span>");
       }
-      Dafny.ISequence<Dafny.Rune> _16_html;
-      _16_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f6efe4;--ink:#1c1917;--muted:#6b625b;--card:#fffaf2;--accent:#d97706;--accent-2:#9a3412;--line:rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:radial-gradient(circle at top,#fff8ef 0,#f6efe4 45%,#eadcc7 100%);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("body:before{content:\"\";position:fixed;inset:0;background:linear-gradient(135deg,rgba(217,119,6,.12),transparent 35%,rgba(154,52,18,.08));pointer-events:none;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;position:relative;z-index:1;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,250,242,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.55);border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(28,25,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:160px 1fr;gap:28px;padding:34px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.8),rgba(255,244,224,.88));}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:160px;height:160px;border-radius:28px;overflow:hidden;background:#f3e3cb;border:1px solid rgba(28,25,23,.08);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:56px;font-weight:800;color:var(--accent-2);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:clamp(2rem,5vw,4rem);line-height:.92;font-weight:800;max-width:9ch;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid rgba(28,25,23,.08);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(217,119,6,.16);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 34px 34px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(28,25,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 10px 30px rgba(154,52,18,.22);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a:hover{transform:translateY(-1px);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:22px;}.title{max-width:none;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!-- proof:")), _12_tail5), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(" -->")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), _13_picturePanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A cleaner generated surface for the formic demo. The page keeps the modeled identity fields visible while presenting them as a composed profile card instead of raw tokens.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), _14_emailPanel), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), _15_pictureMeta), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This interface is generated from Dafny and rendered through the ASP.NET host. The profile action reflects the current authentication state and the layout intentionally favors a presentation layer that feels designed instead of incidental.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
-      Dafny.ISequence<Dafny.Rune> _17_statusPrefix;
-      _17_statusPrefix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|status|");
-      Dafny.ISequence<Dafny.Rune> _18_statusSuffix;
-      _18_statusSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _19_statusHaystack;
-      _19_statusHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_17_statusPrefix, _0_status), _18_statusSuffix);
-      Dafny.ISequence<Dafny.Rune> _20_namePrefix;
-      _20_namePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|user|"));
-      Dafny.ISequence<Dafny.Rune> _21_nameSuffix;
-      _21_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _22_nameHaystack;
-      _22_nameHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_20_namePrefix, (ctx).dtor_name), _21_nameSuffix);
-      Dafny.ISequence<Dafny.Rune> _23_actionPrefix;
-      _23_actionPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|action|"));
-      Dafny.ISequence<Dafny.Rune> _24_actionSuffix;
-      _24_actionSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _7_closingPiece);
-      Dafny.ISequence<Dafny.Rune> _25_actionHaystack;
-      _25_actionHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_23_actionPrefix, _1_action), _24_actionSuffix);
-      if (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        Dafny.ISequence<Dafny.Rune> _26_emailPrefix;
-        _26_emailPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|email|"));
-        Dafny.ISequence<Dafny.Rune> _27_emailSuffix;
-        _27_emailSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _5_picturePiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-        Dafny.ISequence<Dafny.Rune> _28_emailHaystack;
-        _28_emailHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_26_emailPrefix, (ctx).dtor_email), _27_emailSuffix);
-      }
-      if (!((ctx).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) {
-        Dafny.ISequence<Dafny.Rune> _29_picturePrefix;
-        _29_picturePrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>|"), _2_statusPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _3_userPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _4_emailPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|picture|"));
-        Dafny.ISequence<Dafny.Rune> _30_pictureSuffix;
-        _30_pictureSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|"), _6_actionPiece), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _7_closingPiece);
-        Dafny.ISequence<Dafny.Rune> _31_pictureHaystack;
-        _31_pictureHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_29_picturePrefix, (ctx).dtor_picture), _30_pictureSuffix);
-      }
-      if ((ctx).dtor_authenticated) {
-        Dafny.ISequence<Dafny.Rune> _32_missingAction;
-        _32_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
-        Dafny.ISequence<Dafny.Rune> _33_userMissingHaystack;
-        _33_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
-        Dafny.ISequence<Dafny.Rune> _34_emailMissingHaystack;
-        _34_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
-        Dafny.ISequence<Dafny.Rune> _35_pictureMissingHaystack;
-        _35_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
-        Dafny.ISequence<Dafny.Rune> _36_actionMissingHaystack;
-        _36_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
-        Dafny.ISequence<Dafny.Rune> _37_htmlMissingHaystack;
-        _37_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
-      } else {
-        Dafny.ISequence<Dafny.Rune> _38_missingAction;
-        _38_missingAction = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
-        Dafny.ISequence<Dafny.Rune> _39_userMissingHaystack;
-        _39_userMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("user"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_name);
-        Dafny.ISequence<Dafny.Rune> _40_emailMissingHaystack;
-        _40_emailMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("email"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_email);
-        Dafny.ISequence<Dafny.Rune> _41_pictureMissingHaystack;
-        _41_pictureMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("picture"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), (ctx).dtor_picture);
-        Dafny.ISequence<Dafny.Rune> _42_actionMissingHaystack;
-        _42_actionMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("action"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _1_action);
-        Dafny.ISequence<Dafny.Rune> _43_htmlMissingHaystack;
-        _43_htmlMissingHaystack = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<html>"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("|")), _12_tail5);
-      }
-      payload = DuctTools.ReturnType.create_Content(_16_html);
-      return payload;
+    }
+    public static Dafny.ISequence<Dafny.Rune> LandingPageHtml(DuctTools._IUserInfo ctx) {
+      Dafny.ISequence<Dafny.Rune> _0_status = DuctLandingImpl.__default.LandingPageStatus(ctx);
+      Dafny.ISequence<Dafny.Rune> _1_action = DuctLandingImpl.__default.LandingPageAction(ctx);
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Formic</title>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<style>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(":root{--bg:#f7f3ea;--ink:#171717;--muted:#63635f;--card:#fffdf8;--accent:#0f766e;--line:rgba(23,23,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("*{box-sizing:border-box;}body{margin:0;font-family:\"Avenir Next\",\"Segoe UI\",sans-serif;background:linear-gradient(180deg,#faf7f0,#ebe7dd);color:var(--ink);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".panel{width:min(920px,100%);background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 24px 70px rgba(23,23,23,.12);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".hero{display:grid;grid-template-columns:150px 1fr;gap:26px;padding:32px;border-bottom:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar{width:150px;height:150px;border-radius:18px;overflow:hidden;background:#e5e0d6;border:1px solid var(--line);display:grid;place-items:center;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar img{width:100%;height:100%;object-fit:cover;display:block;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".avatar-fallback{font-size:52px;font-weight:800;color:var(--accent);letter-spacing:.08em;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".title{margin:0;font-size:42px;line-height:1;font-weight:800;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-badge{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:9px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:14px;font-weight:700;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".status-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".lede{margin:18px 0 0;color:var(--muted);font-size:16px;line-height:1.6;max-width:42rem;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".content{display:grid;grid-template-columns:1.2fr .9fr;gap:20px;padding:28px 32px 32px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card{padding:22px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid var(--line);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".card-title{margin:0 0 16px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-grid{display:grid;gap:14px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row{display:flex;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(23,23,23,.08);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-row:last-child{border-bottom:0;padding-bottom:0;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-label{font-weight:700;color:var(--muted);}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".meta-value{text-align:right;font-weight:600;max-width:22rem;overflow-wrap:anywhere;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".muted{color:var(--muted);font-weight:500;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".actions a{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;text-decoration:none;font-weight:800;background:var(--accent);color:#fff;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString(".aside-copy{margin:0;color:var(--muted);line-height:1.7;}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("@media (max-width:780px){.hero,.content{grid-template-columns:1fr;}.avatar{width:112px;height:112px;border-radius:14px;}.title{font-size:34px;}}")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</style></head><body>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<main class=\"shell\"><section class=\"panel\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"hero\">")), DuctLandingImpl.__default.LandingPagePicturePanel(ctx)), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"eyebrow\">Formic Landing Page</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<h1 class=\"title\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</h1>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"status-badge\"><span class=\"status-dot\"></span>")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"lede\">A generated profile surface for the formic demo.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"content\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<section class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Profile</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-grid\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Name</span><span class=\"meta-value\">")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Email</span>")), DuctLandingImpl.__default.LandingPageEmailPanel(ctx)), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Picture</span>")), DuctLandingImpl.__default.LandingPagePictureMeta(ctx)), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"meta-row\"><span class=\"meta-label\">Session</span><span class=\"meta-value\">")), _0_status), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</span></div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<div class=\"actions\">")), _1_action), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</section>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<aside class=\"card\">")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"card-title\">Notes</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<p class=\"aside-copy\">This page is generated from Dafny and rendered through the ASP.NET host.</p>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</aside>")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</div></section></main></body></html>"));
     }
   }
 
-  public partial class LoginChallengePage : DuctTools.IGenerator {
+  public partial class FormicLandingPage : DuctSpecs.LandingPageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+    public FormicLandingPage() {
+    }
+    public void Generate(DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog)
+    {
+      DuctTools._IReturnType _out0;
+      DB._IDbProgram _out1;
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out0, out _out1);
+      payload = _out0;
+      prog = _out1;
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs._Companion_LandingPageSpec.PreCondition(this, u);
+    }
+    public void __ctor()
+    {
+    }
+    public DuctTools._IReturnType Response(DuctTools._IUserInfo u) {
+      return DuctTools.ReturnType.create_Content(DuctLandingImpl.__default.LandingPageHtml(u));
+    }
+    public DB._IDbProgram Program(DuctTools._IUserInfo u) {
+      return DB.DbProgram.create_Return();
+    }
+  }
+} // end of namespace DuctLandingImpl
+namespace DuctLoginImpl {
+
+
+  public partial class LoginChallengePage : DuctSpecs.LoginChallengePageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public LoginChallengePage() {
-      this._db = default(DB.Database);
     }
-    public DB.Database _db {get; set;}
-    public DB.Database db {
-      get {
-        return this._db;
-      }
-      set {
-        this._db = value;
-      }
-    }
-    public void SetDb(DB.Database db)
+    public void Generate(DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog)
     {
-      DuctTools._Companion_IGenerator.SetDb(this, db);
+      DuctTools._IReturnType _out2;
+      DB._IDbProgram _out3;
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out2, out _out3);
+      payload = _out2;
+      prog = _out3;
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs._Companion_LoginChallengePageSpec.PreCondition(this, u);
     }
     public void __ctor()
     {
     }
-    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
-    {
-      return true;
+    public DuctTools._IReturnType Response(DuctTools._IUserInfo u) {
+      return DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
     }
-    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
-    {
-      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
-      payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
-      return payload;
+    public DB._IDbProgram Program(DuctTools._IUserInfo u) {
+      return DB.DbProgram.create_Return();
     }
   }
+} // end of namespace DuctLoginImpl
+namespace DuctSaveUserImpl {
 
-  public partial class SecurePage : DuctTools.IGenerator {
-    public SecurePage() {
-      this._db = default(DB.Database);
-    }
-    public DB.Database _db {get; set;}
-    public DB.Database db {
-      get {
-        return this._db;
-      }
-      set {
-        this._db = value;
-      }
-    }
-    public void SetDb(DB.Database db)
-    {
-      DuctTools._Companion_IGenerator.SetDb(this, db);
-    }
-    public void __ctor()
-    {
-    }
-    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
-    {
-      return true;
-    }
-    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
-    {
-      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
-      if ((ctx).dtor_authenticated) {
-        Dafny.ISequence<Dafny.Rune> _0_logout;
-        _0_logout = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
-        Dafny.ISequence<Dafny.Rune> _1_authText;
-        _1_authText = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated.");
-        Dafny.ISequence<Dafny.Rune> _2_htmlPrefix;
-        _2_htmlPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Secure</title></head><body><h1>Hello, "));
-        Dafny.ISequence<Dafny.Rune> _3_nameSuffix;
-        _3_nameSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>"), _1_authText), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>")), _0_logout), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>"));
-        Dafny.ISequence<Dafny.Rune> _4_html;
-        _4_html = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), _3_nameSuffix);
-        Dafny.ISequence<Dafny.Rune> _5_authPrefix;
-        _5_authPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>"));
-        Dafny.ISequence<Dafny.Rune> _6_authSuffix;
-        _6_authSuffix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>"), _0_logout), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>"));
-        Dafny.ISequence<Dafny.Rune> _7_logoutPrefix;
-        _7_logoutPrefix = Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(_2_htmlPrefix, (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>")), _1_authText), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>"));
-        Dafny.ISequence<Dafny.Rune> _8_logoutSuffix;
-        _8_logoutSuffix = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>");
-        payload = DuctTools.ReturnType.create_Content(_4_html);
-      } else {
-        payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"));
-      }
-      return payload;
-    }
-  }
 
-  public partial class SaveUserPage : DuctTools.IGenerator {
+  public partial class SaveUserPage : DuctSpecs.SaveUserPageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public SaveUserPage() {
-      this._db = default(DB.Database);
     }
-    public DB.Database _db {get; set;}
-    public DB.Database db {
-      get {
-        return this._db;
-      }
-      set {
-        this._db = value;
-      }
-    }
-    public void SetDb(DB.Database db)
+    public void Generate(DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog)
     {
-      DuctTools._Companion_IGenerator.SetDb(this, db);
+      DuctTools._IReturnType _out4;
+      DB._IDbProgram _out5;
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out4, out _out5);
+      payload = _out4;
+      prog = _out5;
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs._Companion_SaveUserPageSpec.PreCondition(this, u);
     }
     public void __ctor()
     {
     }
-    public bool PreCondition(DuctTools._IUserInfo u, DB.Database db)
-    {
-      return true;
-    }
-    public DuctTools._IReturnType Generate(DuctTools._IUserInfo ctx)
-    {
-      DuctTools._IReturnType payload = DuctTools.ReturnType.Default();
-      if (((ctx).dtor_authenticated) && (!((ctx).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
-        DB._IDbValue _0_saved;
-        _0_saved = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
-        DB.Database _obj0 = this.db;
-        _obj0.entries = Dafny.Sequence<DB._IDbValue>.Concat(this.db.entries, Dafny.Sequence<DB._IDbValue>.FromElements(_0_saved));
-        payload = DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"));
+    public DuctTools._IReturnType Response(DuctTools._IUserInfo u) {
+      if (((u).dtor_authenticated) && (!((u).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
+        return DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"));
       } else {
-        payload = DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
+        return DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"));
       }
-      return payload;
+    }
+    public DB._IDbProgram Program(DuctTools._IUserInfo u) {
+      if (((u).dtor_authenticated) && (!((u).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
+        return DB.DbProgram.create_Insert(DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((u).dtor_email, (u).dtor_name, (u).dtor_picture)));
+      } else {
+        return DB.DbProgram.create_Return();
+      }
     }
   }
-} // end of namespace DuctImpl
+} // end of namespace DuctSaveUserImpl
+namespace DuctSecureImpl {
+
+  public partial class __default {
+    public static Dafny.ISequence<Dafny.Rune> SecureHtml(DuctTools._IUserInfo ctx) {
+      Dafny.ISequence<Dafny.Rune> _0_logout = SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+      Dafny.ISequence<Dafny.Rune> _1_authText = Dafny.Sequence<Dafny.Rune>.UnicodeFromString("You are authenticated.");
+      return Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.Concat(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\" />"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("<title>Secure</title></head><body><h1>Hello, ")), (ctx).dtor_name), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("!</h1><p>")), _1_authText), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p><p>")), _0_logout), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("</p></body></html>"));
+    }
+  }
+
+  public partial class SecurePage : DuctSpecs.SecurePageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+    public SecurePage() {
+    }
+    public void Generate(DuctTools._IUserInfo u, out DuctTools._IReturnType payload, out DB._IDbProgram prog)
+    {
+      DuctTools._IReturnType _out6;
+      DB._IDbProgram _out7;
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out6, out _out7);
+      payload = _out6;
+      prog = _out7;
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs._Companion_SecurePageSpec.PreCondition(this, u);
+    }
+    public void __ctor()
+    {
+    }
+    public DuctTools._IReturnType Response(DuctTools._IUserInfo u) {
+      if ((u).dtor_authenticated) {
+        return DuctTools.ReturnType.create_Content(DuctSecureImpl.__default.SecureHtml(u));
+      } else {
+        return DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"));
+      }
+    }
+    public DB._IDbProgram Program(DuctTools._IUserInfo u) {
+      return DB.DbProgram.create_Return();
+    }
+  }
+} // end of namespace DuctSecureImpl
 namespace DuctApis {
 
 
   public partial class Views {
     public Views() {
+    }
+    public static void EndPointsInterface()
+    {
     }
     public static DuctTools.AllApiEndpoints Endpoints()
     {
@@ -7716,50 +9548,42 @@ namespace DuctApis {
       DuctTools.AllApiEndpoints _nw0 = new DuctTools.AllApiEndpoints();
       _nw0.__ctor();
       _0_catalog = _nw0;
-      DB.Database _1_appDb;
-      DB.Database _nw1 = new DB.Database();
+      DuctLandingImpl.FormicLandingPage _1_formic__landing;
+      DuctLandingImpl.FormicLandingPage _nw1 = new DuctLandingImpl.FormicLandingPage();
       _nw1.__ctor();
-      _1_appDb = _nw1;
-      DuctImpl.FormicLandingPage _2_formic__landing;
-      DuctImpl.FormicLandingPage _nw2 = new DuctImpl.FormicLandingPage();
-      _nw2.__ctor();
-      _2_formic__landing = _nw2;
-      (_2_formic__landing).SetDb(_1_appDb);
-      DuctTools.ApiEndpoint _3_home;
-      DuctTools.ApiEndpoint _nw3 = new DuctTools.ApiEndpoint();
-      _nw3.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _2_formic__landing);
-      _3_home = _nw3;
-      (_0_catalog).Add(_3_home);
-      DuctImpl.LoginChallengePage _4_login__page;
-      DuctImpl.LoginChallengePage _nw4 = new DuctImpl.LoginChallengePage();
-      _nw4.__ctor();
-      _4_login__page = _nw4;
-      (_4_login__page).SetDb(_1_appDb);
-      DuctTools.ApiEndpoint _5_login;
-      DuctTools.ApiEndpoint _nw5 = new DuctTools.ApiEndpoint();
-      _nw5.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")), _4_login__page);
-      _5_login = _nw5;
-      (_0_catalog).Add(_5_login);
-      DuctImpl.SaveUserPage _6_save__user__page;
-      DuctImpl.SaveUserPage _nw6 = new DuctImpl.SaveUserPage();
-      _nw6.__ctor();
-      _6_save__user__page = _nw6;
-      (_6_save__user__page).SetDb(_1_appDb);
-      DuctTools.ApiEndpoint _7_save__user;
-      DuctTools.ApiEndpoint _nw7 = new DuctTools.ApiEndpoint();
-      _nw7.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _6_save__user__page);
-      _7_save__user = _nw7;
-      (_0_catalog).Add(_7_save__user);
-      DuctImpl.SecurePage _8_secure__page;
-      DuctImpl.SecurePage _nw8 = new DuctImpl.SecurePage();
-      _nw8.__ctor();
-      _8_secure__page = _nw8;
-      (_8_secure__page).SetDb(_1_appDb);
-      DuctTools.ApiEndpoint _9_secure;
-      DuctTools.ApiEndpoint _nw9 = new DuctTools.ApiEndpoint();
-      _nw9.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _8_secure__page);
-      _9_secure = _nw9;
-      (_0_catalog).Add(_9_secure);
+      _1_formic__landing = _nw1;
+      DuctTools.ApiEndpoint _2_home;
+      DuctTools.ApiEndpoint _nw2 = new DuctTools.ApiEndpoint();
+      _nw2.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _1_formic__landing);
+      _2_home = _nw2;
+      (_0_catalog).Add(_2_home);
+      DuctLoginImpl.LoginChallengePage _3_login__page;
+      DuctLoginImpl.LoginChallengePage _nw3 = new DuctLoginImpl.LoginChallengePage();
+      _nw3.__ctor();
+      _3_login__page = _nw3;
+      DuctTools.ApiEndpoint _4_login;
+      DuctTools.ApiEndpoint _nw4 = new DuctTools.ApiEndpoint();
+      _nw4.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")), _3_login__page);
+      _4_login = _nw4;
+      (_0_catalog).Add(_4_login);
+      DuctSaveUserImpl.SaveUserPage _5_save__user__page;
+      DuctSaveUserImpl.SaveUserPage _nw5 = new DuctSaveUserImpl.SaveUserPage();
+      _nw5.__ctor();
+      _5_save__user__page = _nw5;
+      DuctTools.ApiEndpoint _6_save__user;
+      DuctTools.ApiEndpoint _nw6 = new DuctTools.ApiEndpoint();
+      _nw6.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _5_save__user__page);
+      _6_save__user = _nw6;
+      (_0_catalog).Add(_6_save__user);
+      DuctSecureImpl.SecurePage _7_secure__page;
+      DuctSecureImpl.SecurePage _nw7 = new DuctSecureImpl.SecurePage();
+      _nw7.__ctor();
+      _7_secure__page = _nw7;
+      DuctTools.ApiEndpoint _8_secure;
+      DuctTools.ApiEndpoint _nw8 = new DuctTools.ApiEndpoint();
+      _nw8.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), DuctTools.ReturnType.create_Content(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")), _7_secure__page);
+      _8_secure = _nw8;
+      (_0_catalog).Add(_8_secure);
       all = _0_catalog;
       return all;
     }

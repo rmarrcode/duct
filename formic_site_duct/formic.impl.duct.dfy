@@ -533,6 +533,7 @@ module DuctImpl {
     }
   }
 
+<<<<<<< ours
   class SaveUserPage extends IGenerator {
 
     predicate DbPreCondition(u, db_before) {
@@ -544,5 +545,7 @@ module DuctImpl {
     }
     
   }
+=======
+>>>>>>> theirs
 
 }

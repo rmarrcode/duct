@@ -6,6 +6,9 @@ module DuctApis {
 
     class Views {
 
+        static method EndPointsInterface()
+
+
         static method Endpoints() returns (all: AllApiEndpoints)
         {
             var catalog := new AllApiEndpoints();
@@ -31,7 +34,7 @@ module DuctApis {
             var secure := new ApiEndpoint("/secure", ReturnType.Content(""), secure_page);
             catalog.Add(secure);
             
-            all := catalog;
+            all := catalog; 
         }
     }
 }
