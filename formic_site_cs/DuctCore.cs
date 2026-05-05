@@ -30,8 +30,8 @@ builder.Services
     {
         options.LoginPath = "/login";
         options.LogoutPath = "/logout";
-        //options.Cookie.SameSite = SameSiteMode.Lax; // works with external redirects on localhost
-        //options.Cookie.SecurePolicy = CookieSecurePolicy.None; // allow http during local dev
+        options.Cookie.SameSite = SameSiteMode.Lax; // works with external redirects on localhost
+        options.Cookie.SecurePolicy = CookieSecurePolicy.None; // allow http during local dev
         options.Cookie.Path = "/";
         options.Cookie.Name = "formic.auth";
     })
@@ -39,8 +39,8 @@ builder.Services
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? string.Empty;
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
-        options.SaveTokens = true; // keep access/refresh tokens in the auth ticket
         options.CallbackPath = "/signin-google";
+        options.SaveTokens = true; // keep access/refresh tokens in the auth ticket
         options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.None;
         options.Scope.Add("profile");

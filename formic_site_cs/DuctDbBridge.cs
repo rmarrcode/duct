@@ -98,9 +98,9 @@ public static class DuctDbBridge
         using var command = connection.CreateCommand();
         command.CommandText = @"
 insert into dafny_objects(root_kind, payload_json)
-values ($root_kind, $payload_json);";
-        command.Parameters.AddWithValue("$root_kind", rootKind);
-        command.Parameters.AddWithValue("$payload_json", payloadJson);
+values (@root_kind, @payload_json);";
+        command.Parameters.AddWithValue("root_kind", rootKind);
+        command.Parameters.AddWithValue("payload_json", payloadJson);
         command.ExecuteNonQuery();
     }
 
@@ -152,7 +152,8 @@ values ($root_kind, $payload_json);";
             return items;
         }
 
-        PropertyInfo[] props = value.GetType()
+        Type valueType = value.GetType();
+        PropertyInfo[] props = valueType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && p.Name.StartsWith("dtor_", StringComparison.Ordinal))
             .ToArray();
@@ -163,11 +164,31 @@ values ($root_kind, $payload_json);";
         }
 
         var result = new Dictionary<string, object?>();
-        result["__type"] = value.GetType().FullName ?? value.GetType().Name;
+        result["__type"] = valueType.FullName ?? valueType.Name;
+
+        string? activeCase = valueType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(bool) && p.Name.StartsWith("is_", StringComparison.Ordinal))
+            .Select(p => (Property: p, Value: p.GetValue(value)))
+            .Where(p => p.Value is true)
+            .Select(p => p.Property.Name["is_".Length..])
+            .FirstOrDefault();
+
+        if (activeCase is not null)
+        {
+            result["__case"] = activeCase;
+        }
 
         foreach (PropertyInfo prop in props)
         {
-            result[NormalizePropertyName(prop.Name)] = ToPlainObject(prop.GetValue(value));
+            try
+            {
+                result[NormalizePropertyName(prop.Name)] = ToPlainObject(prop.GetValue(value));
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is InvalidCastException)
+            {
+                // Generated Dafny datatypes expose destructors for every case; inactive cases throw on access.
+            }
         }
 
         return result;
