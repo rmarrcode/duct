@@ -12,142 +12,150 @@ The key split is:
 
 ## End-To-End Box Diagram
 
-Every important class, trait, or runtime component is shown as a box. Arrows
-describe ownership, inheritance, calls, or translation boundaries.
+This diagram is intentionally boxy and large. It is organized as stacked lanes:
+Dafny specification, Dafny implementation, Dafny API catalog, generated C#,
+hand-written C# host, and one HTTP request.
 
 ```mermaid
 %%{init: {
   "theme": "base",
   "themeVariables": {
-    "fontFamily": "Arial",
-    "fontSize": "22px",
+    "fontFamily": "Arial, sans-serif",
+    "fontSize": "30px",
     "primaryTextColor": "#111827",
-    "lineColor": "#374151"
+    "lineColor": "#111827",
+    "clusterBkg": "#ffffff",
+    "clusterBorder": "#111827"
   },
   "flowchart": {
     "htmlLabels": true,
-    "nodeSpacing": 70,
-    "rankSpacing": 95,
-    "curve": "basis"
+    "nodeSpacing": 95,
+    "rankSpacing": 115,
+    "curve": "linear",
+    "padding": 24
   }
 }}%%
-flowchart LR
-    subgraph DAFNY["Dafny source code (.dfy)"]
-        direction TB
-
-        DB["<b>DB module</b><br/>DbValue, DbKey, DbProgram<br/>ExecuteProgram(before, program)"]
-        USER["<b>UserInfo datatype</b><br/>name<br/>email<br/>picture<br/>authenticated"]
-        RT["<b>ReturnType datatype</b><br/>Content(body)<br/>ChallengeGoogle(returnUrl)<br/>Redirect(url)"]
-        GER["<b>GeneratedEndpointResult datatype</b><br/>program: DbProgram<br/>response: ReturnType"]
-
-        SPEC["<b>IGeneratorSpec trait</b><br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
-        CORE["<b>IGeneratorCore trait</b><br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
-
-        LANDSPEC["<b>LandingPageSpec trait</b><br/>specializes landing page postcondition"]
-        LOGINSPEC["<b>LoginChallengePageSpec trait</b><br/>specializes login challenge postcondition"]
-        SAVESPEC["<b>SaveUserPageSpec trait</b><br/>specializes save-user postcondition"]
-        SECURESPEC["<b>SecurePageSpec trait</b><br/>specializes secure page postcondition"]
-
-        LANDIMPL["<b>FormicLandingPage class</b><br/>Implementation(user)<br/>returns content page result"]
-        LOGINIMPL["<b>LoginChallengePage class</b><br/>Implementation(user)<br/>returns Google challenge result"]
-        SAVEIMPL["<b>SaveUserPage class</b><br/>Implementation(user)<br/>ProveImplementationCorrect(user)"]
-        SECUREIMPL["<b>SecurePage class</b><br/>Implementation(user)<br/>returns content or challenge"]
-
-        PATH["<b>apiUrl string</b><br/>route path metadata<br/>/, /login, /save_user, /secure"]
-        API["<b>ApiEndpoint class</b><br/>apiUrl: string<br/>generator: IGeneratorCore"]
-        CATALOG["<b>AllApiEndpoints class</b><br/>endpoints: seq of ApiEndpoint<br/>Add | Count | Get"]
-        VIEWS["<b>Views class</b><br/>Endpoints()<br/>builds the Dafny API catalog"]
+flowchart TB
+    subgraph SPEC_LANE["DAFNY SPECIFICATION LAYER"]
+        direction LR
+        USER["<b>UserInfo</b><br/>name<br/>email<br/>picture<br/>authenticated"]
+        DB["<b>DB module</b><br/>DbValue<br/>DbKey<br/>DbProgram<br/>ExecuteProgram"]
+        RT["<b>ReturnType</b><br/>Content<br/>ChallengeGoogle<br/>Redirect"]
+        SPEC["<b>IGeneratorSpec</b><br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
+        CORE["<b>IGeneratorCore</b><br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
+        GER["<b>GeneratedEndpointResult</b><br/>program: DbProgram<br/>response: ReturnType"]
     end
 
-    TRANSLATOR["<b>dafny translate cs</b><br/>translation step<br/>Dafny source becomes generated C#"]
+    subgraph ENDPOINT_SPEC_LANE["DAFNY ENDPOINT SPEC TRAITS"]
+        direction LR
+        LANDSPEC["<b>LandingPageSpec</b><br/>landing page postcondition"]
+        LOGINSPEC["<b>LoginChallengePageSpec</b><br/>login challenge postcondition"]
+        SAVESPEC["<b>SaveUserPageSpec</b><br/>save-user postcondition"]
+        SECURESPEC["<b>SecurePageSpec</b><br/>secure page postcondition"]
+    end
 
-    subgraph GENERATED["Generated C# code<br/>formic_site_duct/converted_duct/formic_duct.cs"]
-        direction TB
+    subgraph IMPL_LANE["DAFNY ENDPOINT IMPLEMENTATION CLASSES"]
+        direction LR
+        LANDIMPL["<b>FormicLandingPage</b><br/>Implementation(user)<br/>returns HTML content"]
+        LOGINIMPL["<b>LoginChallengePage</b><br/>Implementation(user)<br/>returns Google challenge"]
+        SAVEIMPL["<b>SaveUserPage</b><br/>Implementation(user)<br/>ProveImplementationCorrect(user)"]
+        SECUREIMPL["<b>SecurePage</b><br/>Implementation(user)<br/>content or challenge"]
+    end
 
-        GDB["<b>Generated DB types</b><br/>DbProgram<br/>DbValue<br/>ExecuteProgram helpers"]
-        GCORE["<b>Generated IGeneratorCore interface</b><br/>Implementation(user)<br/>Generate(user, out program, out payload)"]
+    subgraph API_LANE["DAFNY API CATALOG"]
+        direction LR
+        API["<b>ApiEndpoint</b><br/>apiUrl: string<br/>generator: IGeneratorCore"]
+        CATALOG["<b>AllApiEndpoints</b><br/>endpoints: seq of ApiEndpoint<br/>Add<br/>Count<br/>Get"]
+        VIEWS["<b>Views.Endpoints()</b><br/>creates /<br/>creates /login<br/>creates /save_user<br/>creates /secure"]
+    end
+
+    TRANSLATOR["<b>dafny translate cs</b><br/>compiles Dafny source<br/>into generated C#"]
+
+    subgraph GEN_LANE["GENERATED C#"]
+        direction LR
+        GCORE["<b>Generated IGeneratorCore</b><br/>Generate(user, out program, out payload)"]
         GIMPLS["<b>Generated endpoint classes</b><br/>FormicLandingPage<br/>LoginChallengePage<br/>SaveUserPage<br/>SecurePage"]
         GAPI["<b>Generated ApiEndpoint</b><br/>apiUrl<br/>generator"]
-        GVIEWS["<b>Generated Views.Endpoints()</b><br/>builds generated endpoint catalog"]
+        GVIEWS["<b>Generated Views.Endpoints()</b><br/>returns generated endpoint catalog"]
+        GDB["<b>Generated DB types</b><br/>DbProgram<br/>DbValue"]
     end
 
-    subgraph HOST["Hand-written C# host<br/>formic_site_cs"]
-        direction TB
-
-        PROGRAM["<b>DuctCore.cs / Program</b><br/>configures auth<br/>loads Views.Endpoints()"]
-        MAPGET["<b>ASP.NET MapGet handlers</b><br/>one route per ApiEndpoint.apiUrl"]
-        CLAIMS["<b>ClaimsPrincipal to UserInfo</b><br/>name<br/>email<br/>picture<br/>authenticated"]
-        RETURNRESP["<b>ReturnResponse(generator, user, db)</b><br/>calls Generate<br/>executes DbProgram<br/>renders ReturnType"]
-        DBBRIDGE["<b>DuctDbBridge.cs</b><br/>executes generated DbProgram<br/>against storage"]
-        HTTP["<b>HTTP client response</b><br/>HTML content<br/>Google challenge<br/>redirect"]
+    subgraph HOST_LANE["HAND-WRITTEN C# HOST"]
+        direction LR
+        PROGRAM["<b>DuctCore.cs</b><br/>configures Google auth<br/>loads Views.Endpoints()"]
+        MAPGET["<b>app.MapGet</b><br/>one route per apiUrl"]
+        CLAIMS["<b>ToDafnyUserInfo</b><br/>ClaimsPrincipal to UserInfo"]
+        RETURNRESP["<b>ReturnResponse</b><br/>calls Generate<br/>executes DbProgram<br/>renders ReturnType"]
+        DBBRIDGE["<b>DuctDbBridge</b><br/>runs DbProgram against storage"]
+        HTTP["<b>HTTP response</b><br/>HTML<br/>Google challenge<br/>redirect"]
     end
 
-    SPEC -->|"is extended by"| CORE
-    CORE -->|"requires implementation to return"| GER
-    GER -->|"contains"| DB
-    GER -->|"contains"| RT
-    CORE -->|"reads"| USER
-    CORE -->|"ImplementationCorrect checks PostCondition over ExecuteProgram"| SPEC
-    SPEC -->|"PostCondition mentions before/after database state"| DB
+    SPEC -->|"extends"| CORE
+    CORE -->|"returns"| GER
+    GER -->|"program field"| DB
+    GER -->|"response field"| RT
+    CORE -->|"input"| USER
 
-    LANDSPEC -->|"extends"| CORE
-    LOGINSPEC -->|"extends"| CORE
-    SAVESPEC -->|"extends"| CORE
-    SECURESPEC -->|"extends"| CORE
+    CORE -->|"base trait"| LANDSPEC
+    CORE -->|"base trait"| LOGINSPEC
+    CORE -->|"base trait"| SAVESPEC
+    CORE -->|"base trait"| SECURESPEC
 
-    LANDIMPL -->|"extends"| LANDSPEC
-    LOGINIMPL -->|"extends"| LOGINSPEC
-    SAVEIMPL -->|"extends"| SAVESPEC
-    SECUREIMPL -->|"extends"| SECURESPEC
+    LANDSPEC -->|"extended by"| LANDIMPL
+    LOGINSPEC -->|"extended by"| LOGINIMPL
+    SAVESPEC -->|"extended by"| SAVEIMPL
+    SECURESPEC -->|"extended by"| SECUREIMPL
+    SAVEIMPL -->|"proves"| CORE
 
-    SAVEIMPL -->|"proof establishes"| CORE
-
-    API -->|"stores route string"| PATH
     API -->|"stores generator"| CORE
-    CATALOG -->|"contains many"| API
-    VIEWS -->|"creates catalog with endpoint boxes"| CATALOG
-    VIEWS -->|"binds / to"| LANDIMPL
-    VIEWS -->|"binds /login to"| LOGINIMPL
-    VIEWS -->|"binds /save_user to"| SAVEIMPL
-    VIEWS -->|"binds /secure to"| SECUREIMPL
+    VIEWS -->|"creates many"| API
+    CATALOG -->|"contains"| API
+    VIEWS -->|"returns"| CATALOG
+    VIEWS -->|"binds routes to"| LANDIMPL
+    VIEWS -->|"binds routes to"| LOGINIMPL
+    VIEWS -->|"binds routes to"| SAVEIMPL
+    VIEWS -->|"binds routes to"| SECUREIMPL
 
-    VIEWS -->|"included in translation input"| TRANSLATOR
-    CORE -->|"included in translation input"| TRANSLATOR
-    DB -->|"included in translation input"| TRANSLATOR
-    TRANSLATOR -->|"emits generated C# boxes"| GVIEWS
-    TRANSLATOR -->|"emits generated C# boxes"| GCORE
-    TRANSLATOR -->|"emits generated C# boxes"| GDB
-    DB -->|"translated into"| GDB
-    CORE -->|"translated into"| GCORE
-    LANDIMPL -->|"translated into"| GIMPLS
-    LOGINIMPL -->|"translated into"| GIMPLS
-    SAVEIMPL -->|"translated into"| GIMPLS
-    SECUREIMPL -->|"translated into"| GIMPLS
-    API -->|"translated into"| GAPI
-    VIEWS -->|"translated into"| GVIEWS
+    DB --> TRANSLATOR
+    CORE --> TRANSLATOR
+    VIEWS --> TRANSLATOR
+    LANDIMPL --> TRANSLATOR
+    LOGINIMPL --> TRANSLATOR
+    SAVEIMPL --> TRANSLATOR
+    SECUREIMPL --> TRANSLATOR
+
+    TRANSLATOR --> GDB
+    TRANSLATOR --> GCORE
+    TRANSLATOR --> GIMPLS
+    TRANSLATOR --> GAPI
+    TRANSLATOR --> GVIEWS
 
     PROGRAM -->|"calls"| GVIEWS
-    GVIEWS -->|"returns generated catalog of"| GAPI
-    GAPI -->|"provides apiUrl to"| MAPGET
-    GAPI -->|"provides generator to"| RETURNRESP
-    MAPGET -->|"creates user from request"| CLAIMS
-    CLAIMS -->|"passes generated UserInfo to"| RETURNRESP
-    RETURNRESP -->|"calls generated Generate"| GCORE
-    GCORE -->|"dispatches to generated Implementation"| GIMPLS
-    GIMPLS -->|"returns generated DbProgram + ReturnType"| RETURNRESP
-    RETURNRESP -->|"sends program to"| DBBRIDGE
-    DBBRIDGE -->|"executes"| GDB
-    RETURNRESP -->|"turns ReturnType into"| HTTP
+    GVIEWS -->|"catalog of"| GAPI
+    GAPI -->|"path"| MAPGET
+    GAPI -->|"generator"| RETURNRESP
+    MAPGET -->|"request user"| CLAIMS
+    CLAIMS -->|"UserInfo"| RETURNRESP
+    RETURNRESP -->|"Generate"| GCORE
+    GCORE -->|"Implementation"| GIMPLS
+    GIMPLS -->|"DbProgram + ReturnType"| RETURNRESP
+    RETURNRESP -->|"DbProgram"| DBBRIDGE
+    DBBRIDGE -->|"uses generated DB"| GDB
+    RETURNRESP -->|"ReturnType"| HTTP
 
-    classDef dafnyBox fill:#eef6ff,stroke:#1d4ed8,stroke-width:3px,color:#111827,font-size:22px;
-    classDef generatedBox fill:#ecfdf5,stroke:#047857,stroke-width:3px,color:#111827,font-size:22px;
-    classDef hostBox fill:#fff7ed,stroke:#c2410c,stroke-width:3px,color:#111827,font-size:22px;
-    classDef bridgeBox fill:#f5f3ff,stroke:#6d28d9,stroke-width:4px,color:#111827,font-size:24px;
+    classDef dafny fill:#eaf3ff,stroke:#1d4ed8,stroke-width:5px,color:#111827,font-size:30px;
+    classDef impl fill:#eff6ff,stroke:#2563eb,stroke-width:5px,color:#111827,font-size:30px;
+    classDef api fill:#f0f9ff,stroke:#0369a1,stroke-width:5px,color:#111827,font-size:30px;
+    classDef generated fill:#ecfdf5,stroke:#047857,stroke-width:5px,color:#111827,font-size:30px;
+    classDef host fill:#fff7ed,stroke:#c2410c,stroke-width:5px,color:#111827,font-size:30px;
+    classDef bridge fill:#f5f3ff,stroke:#6d28d9,stroke-width:6px,color:#111827,font-size:32px;
 
-    class DB,USER,RT,GER,SPEC,CORE,LANDSPEC,LOGINSPEC,SAVESPEC,SECURESPEC,LANDIMPL,LOGINIMPL,SAVEIMPL,SECUREIMPL,PATH,API,CATALOG,VIEWS dafnyBox;
-    class GDB,GCORE,GIMPLS,GAPI,GVIEWS generatedBox;
-    class PROGRAM,MAPGET,CLAIMS,RETURNRESP,DBBRIDGE,HTTP hostBox;
-    class TRANSLATOR bridgeBox;
+    class USER,DB,RT,SPEC,CORE,GER,LANDSPEC,LOGINSPEC,SAVESPEC,SECURESPEC dafny;
+    class LANDIMPL,LOGINIMPL,SAVEIMPL,SECUREIMPL impl;
+    class API,CATALOG,VIEWS api;
+    class GCORE,GIMPLS,GAPI,GVIEWS,GDB generated;
+    class PROGRAM,MAPGET,CLAIMS,RETURNRESP,DBBRIDGE,HTTP host;
+    class TRANSLATOR bridge;
 ```
 
 ## Dafny Spec And Implementation Relationship
@@ -156,18 +164,43 @@ This diagram focuses only on Dafny. The specs define the contract. The endpoint
 classes implement the contract. `ImplementationCorrect` is the proof bridge.
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial, sans-serif",
+    "fontSize": "28px",
+    "primaryTextColor": "#111827",
+    "lineColor": "#111827"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 85,
+    "rankSpacing": 100,
+    "curve": "linear"
+  }
+}}%%
 flowchart TB
-    SPECBOX["IGeneratorSpec<br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
-    COREBOX["IGeneratorCore<br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
-    RESULTBOX["GeneratedEndpointResult<br/>program: DbProgram<br/>response: ReturnType"]
-    DBBOX["DbProgram + ExecuteProgram<br/>describes database effect"]
-    RTBOX["ReturnType<br/>describes HTTP effect"]
+    subgraph CONTRACT["DAFNY CONTRACT BOXES"]
+        direction LR
+        SPECBOX["<b>IGeneratorSpec</b><br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
+        COREBOX["<b>IGeneratorCore</b><br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
+        RESULTBOX["<b>GeneratedEndpointResult</b><br/>program: DbProgram<br/>response: ReturnType"]
+    end
 
-    PAGE_SPEC["Endpoint spec trait<br/>LandingPageSpec / LoginChallengePageSpec<br/>SaveUserPageSpec / SecurePageSpec"]
-    LLMBOX["LLM or developer implementation<br/>writes Implementation(user)"]
-    IMPLBOX["Endpoint implementation class<br/>returns GeneratedEndpointResult"]
-    PROOFBOX["Proof obligation<br/>ImplementationCorrect(user)"]
-    GENBOX["Generate(user)<br/>unpacks Implementation(user)<br/>returns program + payload"]
+    subgraph EFFECTS["EFFECT BOXES"]
+        direction LR
+        DBBOX["<b>DbProgram + ExecuteProgram</b><br/>describes database effect"]
+        RTBOX["<b>ReturnType</b><br/>describes HTTP effect"]
+    end
+
+    subgraph IMPLEMENTATION["IMPLEMENTATION BOXES"]
+        direction LR
+        PAGE_SPEC["<b>Endpoint spec trait</b><br/>LandingPageSpec<br/>LoginChallengePageSpec<br/>SaveUserPageSpec<br/>SecurePageSpec"]
+        LLMBOX["<b>LLM or developer</b><br/>writes Implementation(user)"]
+        IMPLBOX["<b>Endpoint implementation class</b><br/>returns GeneratedEndpointResult"]
+        PROOFBOX["<b>Proof obligation</b><br/>ImplementationCorrect(user)"]
+        GENBOX["<b>Generate(user)</b><br/>unpacks Implementation(user)<br/>returns program + payload"]
+    end
 
     SPECBOX -->|"base proof contract"| COREBOX
     COREBOX -->|"Implementation must return"| RESULTBOX
@@ -181,6 +214,14 @@ flowchart TB
     PROOFBOX -->|"checks: PostCondition(user, before, response, ExecuteProgram(before, program))"| SPECBOX
     GENBOX -->|"calls only"| IMPLBOX
     GENBOX -->|"does not duplicate business logic"| RESULTBOX
+
+    classDef box fill:#eaf3ff,stroke:#1d4ed8,stroke-width:5px,color:#111827,font-size:28px;
+    classDef effect fill:#f0fdf4,stroke:#047857,stroke-width:5px,color:#111827,font-size:28px;
+    classDef proof fill:#f5f3ff,stroke:#6d28d9,stroke-width:6px,color:#111827,font-size:30px;
+
+    class SPECBOX,COREBOX,RESULTBOX,PAGE_SPEC,LLMBOX,IMPLBOX,GENBOX box;
+    class DBBOX,RTBOX effect;
+    class PROOFBOX proof;
 ```
 
 ## C# Runtime Relationship
@@ -188,27 +229,44 @@ flowchart TB
 This diagram focuses only on generated and hand-written C#.
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial, sans-serif",
+    "fontSize": "28px",
+    "primaryTextColor": "#111827",
+    "lineColor": "#111827"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 85,
+    "rankSpacing": 100,
+    "curve": "linear"
+  }
+}}%%
 flowchart TB
     subgraph GENCODE["Generated C# from Dafny"]
-        GUSER["DuctTools.UserInfo"]
-        GRET["DuctTools.ReturnType"]
-        GPROG["DB.DbProgram"]
-        GRESULT["DuctTools.GeneratedEndpointResult"]
-        GCORE["DuctTools.IGeneratorCore"]
-        GENDPOINTS["Generated endpoint classes<br/>Implementation(user)"]
-        GAPI["DuctTools.ApiEndpoint<br/>apiUrl + generator"]
-        GCATALOG["DuctTools.AllApiEndpoints"]
-        GVIEWS["DuctApis.Views.Endpoints()"]
+        direction LR
+        GUSER["<b>DuctTools.UserInfo</b>"]
+        GRET["<b>DuctTools.ReturnType</b>"]
+        GPROG["<b>DB.DbProgram</b>"]
+        GRESULT["<b>DuctTools.GeneratedEndpointResult</b>"]
+        GCORE["<b>DuctTools.IGeneratorCore</b>"]
+        GENDPOINTS["<b>Generated endpoint classes</b><br/>Implementation(user)"]
+        GAPI["<b>DuctTools.ApiEndpoint</b><br/>apiUrl<br/>generator"]
+        GCATALOG["<b>DuctTools.AllApiEndpoints</b>"]
+        GVIEWS["<b>DuctApis.Views.Endpoints()</b>"]
     end
 
     subgraph HOSTCODE["Hand-written ASP.NET C#"]
-        APP["DuctCore.cs"]
-        AUTH["ASP.NET authentication<br/>Google + cookie auth"]
-        ROUTES["app.MapGet(path, handler)"]
-        USERCONV["ToDafnyUserInfo(ClaimsPrincipal)"]
-        RESP["ReturnResponse(generator, user, db)"]
-        BRIDGE["DuctDbBridge.ExecuteProgram(db, program)"]
-        OUT["IResult HTTP response"]
+        direction LR
+        APP["<b>DuctCore.cs</b>"]
+        AUTH["<b>ASP.NET authentication</b><br/>Google + cookie auth"]
+        ROUTES["<b>app.MapGet(path, handler)</b>"]
+        USERCONV["<b>ToDafnyUserInfo</b><br/>ClaimsPrincipal to UserInfo"]
+        RESP["<b>ReturnResponse</b><br/>generator, user, db"]
+        BRIDGE["<b>DuctDbBridge.ExecuteProgram</b><br/>db, program"]
+        OUT["<b>IResult HTTP response</b>"]
     end
 
     GRESULT -->|"contains"| GPROG
@@ -232,6 +290,12 @@ flowchart TB
     RESP -->|"executes database program"| BRIDGE
     BRIDGE -->|"uses"| GPROG
     RESP -->|"maps ReturnType to ASP.NET result"| OUT
+
+    classDef gen fill:#ecfdf5,stroke:#047857,stroke-width:5px,color:#111827,font-size:28px;
+    classDef host fill:#fff7ed,stroke:#c2410c,stroke-width:5px,color:#111827,font-size:28px;
+
+    class GUSER,GRET,GPROG,GRESULT,GCORE,GENDPOINTS,GAPI,GCATALOG,GVIEWS gen;
+    class APP,AUTH,ROUTES,USERCONV,RESP,BRIDGE,OUT host;
 ```
 
 ## Core Contracts
