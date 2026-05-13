@@ -16,55 +16,70 @@ Every important class, trait, or runtime component is shown as a box. Arrows
 describe ownership, inheritance, calls, or translation boundaries.
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "22px",
+    "primaryTextColor": "#111827",
+    "lineColor": "#374151"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 70,
+    "rankSpacing": 95,
+    "curve": "basis"
+  }
+}}%%
 flowchart LR
     subgraph DAFNY["Dafny source code (.dfy)"]
         direction TB
 
-        DB["DB module<br/>DbValue, DbKey, DbProgram<br/>ExecuteProgram(before, program)"]
-        USER["UserInfo datatype<br/>name, email, picture, authenticated"]
-        RT["ReturnType datatype<br/>Content | ChallengeGoogle | Redirect"]
-        GER["GeneratedEndpointResult datatype<br/>program: DbProgram<br/>response: ReturnType"]
+        DB["<b>DB module</b><br/>DbValue, DbKey, DbProgram<br/>ExecuteProgram(before, program)"]
+        USER["<b>UserInfo datatype</b><br/>name<br/>email<br/>picture<br/>authenticated"]
+        RT["<b>ReturnType datatype</b><br/>Content(body)<br/>ChallengeGoogle(returnUrl)<br/>Redirect(url)"]
+        GER["<b>GeneratedEndpointResult datatype</b><br/>program: DbProgram<br/>response: ReturnType"]
 
-        SPEC["IGeneratorSpec trait<br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
-        CORE["IGeneratorCore trait<br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
+        SPEC["<b>IGeneratorSpec trait</b><br/>PreCondition(user)<br/>PostCondition(user, before, payload, after)"]
+        CORE["<b>IGeneratorCore trait</b><br/>Implementation(user)<br/>ImplementationCorrect(user)<br/>Generate(user)"]
 
-        LANDSPEC["LandingPageSpec trait"]
-        LOGINSPEC["LoginChallengePageSpec trait"]
-        SAVESPEC["SaveUserPageSpec trait"]
-        SECURESPEC["SecurePageSpec trait"]
+        LANDSPEC["<b>LandingPageSpec trait</b><br/>specializes landing page postcondition"]
+        LOGINSPEC["<b>LoginChallengePageSpec trait</b><br/>specializes login challenge postcondition"]
+        SAVESPEC["<b>SaveUserPageSpec trait</b><br/>specializes save-user postcondition"]
+        SECURESPEC["<b>SecurePageSpec trait</b><br/>specializes secure page postcondition"]
 
-        LANDIMPL["FormicLandingPage class<br/>Implementation(user)"]
-        LOGINIMPL["LoginChallengePage class<br/>Implementation(user)"]
-        SAVEIMPL["SaveUserPage class<br/>Implementation(user)<br/>ProveImplementationCorrect(user)"]
-        SECUREIMPL["SecurePage class<br/>Implementation(user)"]
+        LANDIMPL["<b>FormicLandingPage class</b><br/>Implementation(user)<br/>returns content page result"]
+        LOGINIMPL["<b>LoginChallengePage class</b><br/>Implementation(user)<br/>returns Google challenge result"]
+        SAVEIMPL["<b>SaveUserPage class</b><br/>Implementation(user)<br/>ProveImplementationCorrect(user)"]
+        SECUREIMPL["<b>SecurePage class</b><br/>Implementation(user)<br/>returns content or challenge"]
 
-        PATH["apiUrl string<br/>route path metadata"]
-        API["ApiEndpoint class<br/>apiUrl: string<br/>generator: IGeneratorCore"]
-        CATALOG["AllApiEndpoints class<br/>endpoints: seq of ApiEndpoint<br/>Add | Count | Get"]
-        VIEWS["Views class<br/>Endpoints()"]
+        PATH["<b>apiUrl string</b><br/>route path metadata<br/>/, /login, /save_user, /secure"]
+        API["<b>ApiEndpoint class</b><br/>apiUrl: string<br/>generator: IGeneratorCore"]
+        CATALOG["<b>AllApiEndpoints class</b><br/>endpoints: seq of ApiEndpoint<br/>Add | Count | Get"]
+        VIEWS["<b>Views class</b><br/>Endpoints()<br/>builds the Dafny API catalog"]
     end
 
-    TRANSLATOR["dafny translate cs<br/>translation step"]
+    TRANSLATOR["<b>dafny translate cs</b><br/>translation step<br/>Dafny source becomes generated C#"]
 
     subgraph GENERATED["Generated C# code<br/>formic_site_duct/converted_duct/formic_duct.cs"]
         direction TB
 
-        GDB["Generated DB types<br/>DbProgram, DbValue, ExecuteProgram helpers"]
-        GCORE["Generated IGeneratorCore interface<br/>Implementation(user)<br/>Generate(user, out program, out payload)"]
-        GIMPLS["Generated endpoint classes<br/>FormicLandingPage<br/>LoginChallengePage<br/>SaveUserPage<br/>SecurePage"]
-        GAPI["Generated ApiEndpoint<br/>apiUrl + generator"]
-        GVIEWS["Generated Views.Endpoints()<br/>builds endpoint catalog"]
+        GDB["<b>Generated DB types</b><br/>DbProgram<br/>DbValue<br/>ExecuteProgram helpers"]
+        GCORE["<b>Generated IGeneratorCore interface</b><br/>Implementation(user)<br/>Generate(user, out program, out payload)"]
+        GIMPLS["<b>Generated endpoint classes</b><br/>FormicLandingPage<br/>LoginChallengePage<br/>SaveUserPage<br/>SecurePage"]
+        GAPI["<b>Generated ApiEndpoint</b><br/>apiUrl<br/>generator"]
+        GVIEWS["<b>Generated Views.Endpoints()</b><br/>builds generated endpoint catalog"]
     end
 
     subgraph HOST["Hand-written C# host<br/>formic_site_cs"]
         direction TB
 
-        PROGRAM["DuctCore.cs / Program<br/>configures auth<br/>loads Views.Endpoints()"]
-        MAPGET["ASP.NET MapGet handlers<br/>one route per ApiEndpoint.apiUrl"]
-        CLAIMS["ClaimsPrincipal to UserInfo<br/>name, email, picture, authenticated"]
-        RETURNRESP["ReturnResponse(generator, user, db)<br/>calls Generate<br/>executes DbProgram<br/>renders ReturnType"]
-        DBBRIDGE["DuctDbBridge.cs<br/>executes generated DbProgram against storage"]
-        HTTP["HTTP client response<br/>HTML content<br/>Google challenge<br/>redirect"]
+        PROGRAM["<b>DuctCore.cs / Program</b><br/>configures auth<br/>loads Views.Endpoints()"]
+        MAPGET["<b>ASP.NET MapGet handlers</b><br/>one route per ApiEndpoint.apiUrl"]
+        CLAIMS["<b>ClaimsPrincipal to UserInfo</b><br/>name<br/>email<br/>picture<br/>authenticated"]
+        RETURNRESP["<b>ReturnResponse(generator, user, db)</b><br/>calls Generate<br/>executes DbProgram<br/>renders ReturnType"]
+        DBBRIDGE["<b>DuctDbBridge.cs</b><br/>executes generated DbProgram<br/>against storage"]
+        HTTP["<b>HTTP client response</b><br/>HTML content<br/>Google challenge<br/>redirect"]
     end
 
     SPEC -->|"is extended by"| CORE
@@ -123,6 +138,16 @@ flowchart LR
     RETURNRESP -->|"sends program to"| DBBRIDGE
     DBBRIDGE -->|"executes"| GDB
     RETURNRESP -->|"turns ReturnType into"| HTTP
+
+    classDef dafnyBox fill:#eef6ff,stroke:#1d4ed8,stroke-width:3px,color:#111827,font-size:22px;
+    classDef generatedBox fill:#ecfdf5,stroke:#047857,stroke-width:3px,color:#111827,font-size:22px;
+    classDef hostBox fill:#fff7ed,stroke:#c2410c,stroke-width:3px,color:#111827,font-size:22px;
+    classDef bridgeBox fill:#f5f3ff,stroke:#6d28d9,stroke-width:4px,color:#111827,font-size:24px;
+
+    class DB,USER,RT,GER,SPEC,CORE,LANDSPEC,LOGINSPEC,SAVESPEC,SECURESPEC,LANDIMPL,LOGINIMPL,SAVEIMPL,SECUREIMPL,PATH,API,CATALOG,VIEWS dafnyBox;
+    class GDB,GCORE,GIMPLS,GAPI,GVIEWS generatedBox;
+    class PROGRAM,MAPGET,CLAIMS,RETURNRESP,DBBRIDGE,HTTP hostBox;
+    class TRANSLATOR bridgeBox;
 ```
 
 ## Dafny Spec And Implementation Relationship
