@@ -13,6 +13,10 @@ module DuctTools {
   | ChallengeGoogle(returnUrl: string)
   | Redirect(url: string)
 
+  datatype GeneratedEndpointResult = GeneratedEndpointResult(
+    program: DbProgram,
+    response: ReturnType)
+
   trait IGeneratorSpec {
 
     predicate PreCondition(u: UserInfo)
@@ -26,50 +30,37 @@ module DuctTools {
 
   trait {:termination false} IGeneratorCore extends IGeneratorSpec {
 
-    function Program(u: UserInfo): DbProgram
-    function Response(u: UserInfo): ReturnType
+    function Implementation(u: UserInfo): GeneratedEndpointResult
 
     ghost predicate ImplementationCorrect(u: UserInfo)
     {
+      var result := Implementation(u);
       forall before: seq<DbValue> ::
-        PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u)))
+        PostCondition(u, before, result.response, ExecuteProgram(before, result.program))
     }
 
-    ghost predicate GeneratePost(
-      u: UserInfo,
-      payload: ReturnType,
-      prog: DbProgram)
-    {
-      payload == Response(u) &&
-      prog == Program(u) &&
-      forall before: seq<DbValue> ::
-        PostCondition(u, before, payload, ExecuteProgram(before, prog))
-    }
-
-    method Generate(u: UserInfo) returns (payload: ReturnType, prog: DbProgram)
+    method Generate(u: UserInfo) returns (prog: DbProgram, payload: ReturnType)
       requires PreCondition(u)
-      ensures payload == Response(u)
-      ensures prog == Program(u)
+      ensures prog == Implementation(u).program
+      ensures payload == Implementation(u).response
     {
-      payload := Response(u);
-      prog := Program(u);
+      var result := Implementation(u);
+      prog := result.program;
+      payload := result.response;
     }
   }
 
   class ApiEndpoint {
     var apiUrl: string
-    var returnType: ReturnType
     var generator: IGeneratorCore
 
-    constructor(apiUrl: string, rt: ReturnType, generator: IGeneratorCore)
+    constructor(apiUrl: string, generator: IGeneratorCore)
       requires apiUrl != ""
       requires apiUrl[0] == '/' // simple invariant: path-like
       ensures this.apiUrl == apiUrl
-      ensures this.returnType == rt
       ensures this.generator == generator
     {
       this.apiUrl := apiUrl;
-      this.returnType := rt;
       this.generator := generator;
     }
   }

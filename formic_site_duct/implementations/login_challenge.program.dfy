@@ -8,14 +8,9 @@ module DuctLoginImpl {
 
     constructor () {}
 
-    function Response(u: UserInfo): ReturnType
+    function Implementation(u: UserInfo): GeneratedEndpointResult
     {
-      ChallengeGoogle("/save_user")
-    }
-
-    function Program(u: UserInfo): DbProgram
-    {
-      Return
+      GeneratedEndpointResult(Return, ChallengeGoogle("/"))
     }
   }
 }

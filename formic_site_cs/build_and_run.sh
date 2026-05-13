@@ -10,7 +10,7 @@ SRC_SPECS="$DAFNY_DIR/formic.specs.duct.dfy"
 SRC_APIS="$DAFNY_DIR/formic.apis.duct.dfy"
 mapfile -t IMPLEMENTATIONS < <(find "$DAFNY_DIR/implementations" -maxdepth 1 -name '*.program.dfy' | sort)
 
-PORT="${PORT:-5002}"
+PORT="${PORT:-5000}"
 URL="${URL:-http://localhost:${PORT}}"
 
 echo "[1/3] Generating Dafny -> C# into $OUT_DIR"
@@ -26,4 +26,5 @@ cd "$SCRIPT_DIR"
 dotnet build
 
 echo "[3/3] Running at $URL"
+echo "Google OAuth redirect URI: ${URL}/signin-google"
 dotnet run --urls "$URL"

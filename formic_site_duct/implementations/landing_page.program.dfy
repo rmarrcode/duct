@@ -105,14 +105,9 @@ module DuctLandingImpl {
 
     constructor () {}
 
-    function Response(u: UserInfo): ReturnType
+    function Implementation(u: UserInfo): GeneratedEndpointResult
     {
-      Content(LandingPageHtml(u))
-    }
-
-    function Program(u: UserInfo): DbProgram
-    {
-      Return
+      GeneratedEndpointResult(Return, Content(LandingPageHtml(u)))
     }
   }
 }

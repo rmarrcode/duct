@@ -6,6 +6,7 @@ using DuctTools;
 using DuctApis;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.Google;
 const string PictureClaim = "urn:google:picture";
 
@@ -54,7 +55,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+
 // Inspect request, find auth cookie if present -> pipulate httpcontext.user
 app.UseAuthentication();
 app.UseAuthorization();
@@ -93,7 +94,7 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
 
 static IResult ReturnResponse(IGeneratorCore generator, DuctTools._IUserInfo user, DB.Database db)
 {
-    generator.Generate(user, out _IReturnType payload, out DB._IDbProgram program);
+    generator.Generate(user, out DB._IDbProgram program, out _IReturnType payload);
     DuctDbBridge.ExecuteProgram(db, program);
 
     if (payload.is_Content)
@@ -104,9 +105,10 @@ static IResult ReturnResponse(IGeneratorCore generator, DuctTools._IUserInfo use
 
     if (payload.is_ChallengeGoogle)
     {
+        string returnUrl = FromDafnyString(payload.dtor_returnUrl);
         AuthenticationProperties props = new AuthenticationProperties
         {
-            RedirectUri = FromDafnyString(payload.dtor_returnUrl)
+            RedirectUri = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl
         };
         return Results.Challenge(props, new[] { GoogleDefaults.AuthenticationScheme });
     }

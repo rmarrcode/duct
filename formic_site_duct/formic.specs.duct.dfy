@@ -4,21 +4,19 @@ module DuctSpecs {
   import opened SpecsTools
   import opened DB
 
+  predicate IsValidUserInfoField(field: string) {
+    !Contains(field, "Signed in") &&
+    !Contains(field, "Anonymous") &&
+    !Contains(field, Link("Log out", "/logout")) &&
+    !Contains(field, Link("Sign in", "/login"))
+  }
+
   predicate LandingPagePre(ctx: UserInfo)
   {
     ctx.name != "" &&
-    !Contains(ctx.name, "Signed in") &&
-    !Contains(ctx.name, "Anonymous") &&
-    !Contains(ctx.name, Link("Log out", "/logout")) &&
-    !Contains(ctx.name, Link("Sign in", "/login")) &&
-    !Contains(ctx.email, "Signed in") &&
-    !Contains(ctx.email, "Anonymous") &&
-    !Contains(ctx.email, Link("Log out", "/logout")) &&
-    !Contains(ctx.email, Link("Sign in", "/login")) &&
-    !Contains(ctx.picture, "Signed in") &&
-    !Contains(ctx.picture, "Anonymous") &&
-    !Contains(ctx.picture, Link("Log out", "/logout")) &&
-    !Contains(ctx.picture, Link("Sign in", "/login"))
+    IsValidUserInfoField(ctx.name) &&
+    IsValidUserInfoField(ctx.email) &&
+    IsValidUserInfoField(ctx.picture)
   }
 
   predicate LandingPagePayloadPost(ctx: UserInfo, payload: ReturnType)
@@ -45,7 +43,7 @@ module DuctSpecs {
 
   predicate LoginPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
   {
-    payload == ReturnType.ChallengeGoogle("/save_user") &&
+    payload == ReturnType.ChallengeGoogle("/") &&
     after == before
   }
 
@@ -67,7 +65,7 @@ module DuctSpecs {
       payload == Redirect("/") &&
       after == FilterEntries(before, PersistedUserKey(ctx.email)) + [row]
     else
-      payload == ChallengeGoogle("/save_user") &&
+      payload == ChallengeGoogle("/signin-google") &&
       after == before
   }
 

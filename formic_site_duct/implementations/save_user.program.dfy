@@ -8,20 +8,14 @@ module DuctSaveUserImpl {
 
     constructor () {}
 
-    function Response(u: UserInfo): ReturnType
+    function Implementation(u: UserInfo): GeneratedEndpointResult
     {
       if u.authenticated && u.email != "" then
-        Redirect("/")
+        GeneratedEndpointResult(
+          Insert(DbPersistedUser(PersistedUser(u.email, u.name, u.picture))),
+          Redirect("/"))
       else
-        ChallengeGoogle("/save_user")
-    }
-
-    function Program(u: UserInfo): DbProgram
-    {
-      if u.authenticated && u.email != "" then
-        Insert(DbPersistedUser(PersistedUser(u.email, u.name, u.picture)))
-      else
-        Return
+        GeneratedEndpointResult(Return, ChallengeGoogle("/signin-google"))
     }
 
     lemma ProveImplementationCorrect(u: UserInfo)
@@ -29,25 +23,33 @@ module DuctSaveUserImpl {
       ensures ImplementationCorrect(u)
     {
       assert forall before: seq<DbValue> ::
-        PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u))) by {
+        PostCondition(
+          u,
+          before,
+          Implementation(u).response,
+          ExecuteProgram(before, Implementation(u).program)) by {
         forall before: seq<DbValue>
-          ensures PostCondition(u, before, Response(u), ExecuteProgram(before, Program(u)))
+          ensures PostCondition(
+            u,
+            before,
+            Implementation(u).response,
+            ExecuteProgram(before, Implementation(u).program))
         {
           if u.authenticated && u.email != "" {
             var row := DbPersistedUser(PersistedUser(u.email, u.name, u.picture));
 
-            assert Response(u) == Redirect("/");
+            assert Implementation(u).response == Redirect("/");
             assert KeyOf(row) == PersistedUserKey(u.email);
-            assert Program(u) == Insert(row);
-            assert ProgramOperations(before, Program(u)) == [Put(row)];
-            assert ExecuteProgram(before, Program(u)) == ExecuteOperations(before, [Put(row)]);
-            assert ExecuteProgram(before, Program(u))
+            assert Implementation(u).program == Insert(row);
+            assert ProgramOperations(before, Implementation(u).program) == [Put(row)];
+            assert ExecuteProgram(before, Implementation(u).program) == ExecuteOperations(before, [Put(row)]);
+            assert ExecuteProgram(before, Implementation(u).program)
                  == FilterEntries(before, PersistedUserKey(u.email)) + [row];
           } else {
-            assert Response(u) == ChallengeGoogle("/save_user");
-            assert Program(u) == Return;
-            assert ProgramOperations(before, Program(u)) == [];
-            assert ExecuteProgram(before, Program(u)) == before;
+            assert Implementation(u).response == ChallengeGoogle("/signin-google");
+            assert Implementation(u).program == Return;
+            assert ProgramOperations(before, Implementation(u).program) == [];
+            assert ExecuteProgram(before, Implementation(u).program) == before;
           }
         }
       }

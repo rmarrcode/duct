@@ -20,17 +20,14 @@ module DuctSecureImpl {
 
     constructor () {}
 
-    function Response(u: UserInfo): ReturnType
+    function Implementation(u: UserInfo): GeneratedEndpointResult
     {
-      if u.authenticated then
-        Content(SecureHtml(u))
-      else
-        ChallengeGoogle("/secure")
-    }
-
-    function Program(u: UserInfo): DbProgram
-    {
-      Return
+      GeneratedEndpointResult(
+        Return,
+        if u.authenticated then
+          Content(SecureHtml(u))
+        else
+          ChallengeGoogle("/secure"))
     }
   }
 }
