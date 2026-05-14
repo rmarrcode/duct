@@ -22,16 +22,16 @@ hand-written C# host, and one HTTP request.
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
     "fontSize": "34px",
-    "background": "#e5e7eb",
-    "mainBkg": "#e5e7eb",
-    "primaryColor": "#e5e7eb",
-    "secondaryColor": "#e5e7eb",
-    "tertiaryColor": "#e5e7eb",
+    "background": "#ffffff",
+    "mainBkg": "#ffffff",
+    "primaryColor": "#ffffff",
+    "secondaryColor": "#ffffff",
+    "tertiaryColor": "#ffffff",
     "primaryTextColor": "#111827",
     "lineColor": "#111827",
-    "clusterBkg": "#e5e7eb",
+    "clusterBkg": "#ffffff",
     "clusterBorder": "#111827",
-    "edgeLabelBackground": "#e5e7eb"
+    "edgeLabelBackground": "#ffffff"
   },
   "flowchart": {
     "htmlLabels": true,
@@ -40,7 +40,7 @@ hand-written C# host, and one HTTP request.
     "curve": "stepAfter",
     "padding": 12
   },
-  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #ffffff !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph SPEC_LANE["DAFNY SPECIFICATION LAYER"]
@@ -150,12 +150,12 @@ flowchart TB
     DBBRIDGE -->|"uses generated DB"| GDB
     RETURNRESP -->|"ReturnType"| HTTP
 
-    classDef dafny fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
-    classDef impl fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
-    classDef api fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
-    classDef generated fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
-    classDef host fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
-    classDef bridge fill:#dbeafe,stroke:#111827,stroke-width:8px,color:#111827,font-size:36px;
+    classDef dafny fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef impl fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef api fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef generated fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef host fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef bridge fill:#ffffff,stroke:#111827,stroke-width:8px,color:#111827,font-size:36px;
 
     class USER,DB,RT,SPEC,CORE,GER,LANDSPEC,LOGINSPEC,SAVESPEC,SECURESPEC dafny;
     class LANDIMPL,LOGINIMPL,SAVEIMPL,SECUREIMPL impl;
@@ -176,16 +176,16 @@ classes implement the contract. `ImplementationCorrect` is the proof bridge.
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
     "fontSize": "32px",
-    "background": "#e5e7eb",
-    "mainBkg": "#e5e7eb",
-    "primaryColor": "#e5e7eb",
-    "secondaryColor": "#e5e7eb",
-    "tertiaryColor": "#e5e7eb",
+    "background": "#ffffff",
+    "mainBkg": "#ffffff",
+    "primaryColor": "#ffffff",
+    "secondaryColor": "#ffffff",
+    "tertiaryColor": "#ffffff",
     "primaryTextColor": "#111827",
     "lineColor": "#111827",
-    "clusterBkg": "#e5e7eb",
+    "clusterBkg": "#ffffff",
     "clusterBorder": "#111827",
-    "edgeLabelBackground": "#e5e7eb"
+    "edgeLabelBackground": "#ffffff"
   },
   "flowchart": {
     "htmlLabels": true,
@@ -194,7 +194,7 @@ classes implement the contract. `ImplementationCorrect` is the proof bridge.
     "curve": "stepAfter",
     "padding": 12
   },
-  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #ffffff !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph CONTRACT["DAFNY CONTRACT BOXES"]
@@ -232,9 +232,9 @@ flowchart TB
     GENBOX -->|"calls only"| IMPLBOX
     GENBOX -->|"does not duplicate business logic"| RESULTBOX
 
-    classDef box fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
-    classDef effect fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
-    classDef proof fill:#dbeafe,stroke:#111827,stroke-width:8px,color:#111827,font-size:34px;
+    classDef box fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef effect fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef proof fill:#ffffff,stroke:#111827,stroke-width:8px,color:#111827,font-size:34px;
 
     class SPECBOX,COREBOX,RESULTBOX,PAGE_SPEC,LLMBOX,IMPLBOX,GENBOX box;
     class DBBOX,RTBOX effect;
@@ -251,16 +251,16 @@ This diagram focuses only on generated and hand-written C#.
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
     "fontSize": "32px",
-    "background": "#e5e7eb",
-    "mainBkg": "#e5e7eb",
-    "primaryColor": "#e5e7eb",
-    "secondaryColor": "#e5e7eb",
-    "tertiaryColor": "#e5e7eb",
+    "background": "#ffffff",
+    "mainBkg": "#ffffff",
+    "primaryColor": "#ffffff",
+    "secondaryColor": "#ffffff",
+    "tertiaryColor": "#ffffff",
     "primaryTextColor": "#111827",
     "lineColor": "#111827",
-    "clusterBkg": "#e5e7eb",
+    "clusterBkg": "#ffffff",
     "clusterBorder": "#111827",
-    "edgeLabelBackground": "#e5e7eb"
+    "edgeLabelBackground": "#ffffff"
   },
   "flowchart": {
     "htmlLabels": true,
@@ -269,7 +269,7 @@ This diagram focuses only on generated and hand-written C#.
     "curve": "stepAfter",
     "padding": 12
   },
-  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #ffffff !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph GENCODE["Generated C# from Dafny"]
@@ -318,8 +318,8 @@ flowchart TB
     BRIDGE -->|"uses"| GPROG
     RESP -->|"maps ReturnType to ASP.NET result"| OUT
 
-    classDef gen fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
-    classDef host fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef gen fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef host fill:#ffffff,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
 
     class GUSER,GRET,GPROG,GRESULT,GCORE,GENDPOINTS,GAPI,GCATALOG,GVIEWS gen;
     class APP,AUTH,ROUTES,USERCONV,RESP,BRIDGE,OUT host;
