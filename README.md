@@ -21,18 +21,24 @@ hand-written C# host, and one HTTP request.
   "theme": "base",
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
-    "fontSize": "30px",
+    "fontSize": "34px",
+    "background": "#e5e7eb",
+    "mainBkg": "#e5e7eb",
+    "primaryColor": "#e5e7eb",
+    "secondaryColor": "#e5e7eb",
+    "tertiaryColor": "#e5e7eb",
     "primaryTextColor": "#111827",
     "lineColor": "#111827",
-    "clusterBkg": "#ffffff",
-    "clusterBorder": "#111827"
+    "clusterBkg": "#e5e7eb",
+    "clusterBorder": "#111827",
+    "edgeLabelBackground": "#e5e7eb"
   },
   "flowchart": {
     "htmlLabels": true,
-    "nodeSpacing": 95,
-    "rankSpacing": 115,
-    "curve": "linear",
-    "padding": 24
+    "nodeSpacing": 34,
+    "rankSpacing": 56,
+    "curve": "stepAfter",
+    "padding": 12
   }
 }}%%
 flowchart TB
@@ -143,12 +149,21 @@ flowchart TB
     DBBRIDGE -->|"uses generated DB"| GDB
     RETURNRESP -->|"ReturnType"| HTTP
 
-    classDef dafny fill:#eaf3ff,stroke:#1d4ed8,stroke-width:5px,color:#111827,font-size:30px;
-    classDef impl fill:#eff6ff,stroke:#2563eb,stroke-width:5px,color:#111827,font-size:30px;
-    classDef api fill:#f0f9ff,stroke:#0369a1,stroke-width:5px,color:#111827,font-size:30px;
-    classDef generated fill:#ecfdf5,stroke:#047857,stroke-width:5px,color:#111827,font-size:30px;
-    classDef host fill:#fff7ed,stroke:#c2410c,stroke-width:5px,color:#111827,font-size:30px;
-    classDef bridge fill:#f5f3ff,stroke:#6d28d9,stroke-width:6px,color:#111827,font-size:32px;
+    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
+
+    style SPEC_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style ENDPOINT_SPEC_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style IMPL_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style API_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style GEN_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style HOST_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+
+    classDef dafny fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef impl fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef api fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef generated fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef host fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
+    classDef bridge fill:#dbeafe,stroke:#111827,stroke-width:8px,color:#111827,font-size:36px;
 
     class USER,DB,RT,SPEC,CORE,GER,LANDSPEC,LOGINSPEC,SAVESPEC,SECURESPEC dafny;
     class LANDIMPL,LOGINIMPL,SAVEIMPL,SECUREIMPL impl;
@@ -168,15 +183,24 @@ classes implement the contract. `ImplementationCorrect` is the proof bridge.
   "theme": "base",
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
-    "fontSize": "28px",
+    "fontSize": "32px",
+    "background": "#e5e7eb",
+    "mainBkg": "#e5e7eb",
+    "primaryColor": "#e5e7eb",
+    "secondaryColor": "#e5e7eb",
+    "tertiaryColor": "#e5e7eb",
     "primaryTextColor": "#111827",
-    "lineColor": "#111827"
+    "lineColor": "#111827",
+    "clusterBkg": "#e5e7eb",
+    "clusterBorder": "#111827",
+    "edgeLabelBackground": "#e5e7eb"
   },
   "flowchart": {
     "htmlLabels": true,
-    "nodeSpacing": 85,
-    "rankSpacing": 100,
-    "curve": "linear"
+    "nodeSpacing": 32,
+    "rankSpacing": 52,
+    "curve": "stepAfter",
+    "padding": 12
   }
 }}%%
 flowchart TB
@@ -215,9 +239,15 @@ flowchart TB
     GENBOX -->|"calls only"| IMPLBOX
     GENBOX -->|"does not duplicate business logic"| RESULTBOX
 
-    classDef box fill:#eaf3ff,stroke:#1d4ed8,stroke-width:5px,color:#111827,font-size:28px;
-    classDef effect fill:#f0fdf4,stroke:#047857,stroke-width:5px,color:#111827,font-size:28px;
-    classDef proof fill:#f5f3ff,stroke:#6d28d9,stroke-width:6px,color:#111827,font-size:30px;
+    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
+
+    style CONTRACT fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style EFFECTS fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style IMPLEMENTATION fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+
+    classDef box fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef effect fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef proof fill:#dbeafe,stroke:#111827,stroke-width:8px,color:#111827,font-size:34px;
 
     class SPECBOX,COREBOX,RESULTBOX,PAGE_SPEC,LLMBOX,IMPLBOX,GENBOX box;
     class DBBOX,RTBOX effect;
@@ -233,15 +263,24 @@ This diagram focuses only on generated and hand-written C#.
   "theme": "base",
   "themeVariables": {
     "fontFamily": "Arial, sans-serif",
-    "fontSize": "28px",
+    "fontSize": "32px",
+    "background": "#e5e7eb",
+    "mainBkg": "#e5e7eb",
+    "primaryColor": "#e5e7eb",
+    "secondaryColor": "#e5e7eb",
+    "tertiaryColor": "#e5e7eb",
     "primaryTextColor": "#111827",
-    "lineColor": "#111827"
+    "lineColor": "#111827",
+    "clusterBkg": "#e5e7eb",
+    "clusterBorder": "#111827",
+    "edgeLabelBackground": "#e5e7eb"
   },
   "flowchart": {
     "htmlLabels": true,
-    "nodeSpacing": 85,
-    "rankSpacing": 100,
-    "curve": "linear"
+    "nodeSpacing": 32,
+    "rankSpacing": 52,
+    "curve": "stepAfter",
+    "padding": 12
   }
 }}%%
 flowchart TB
@@ -291,8 +330,13 @@ flowchart TB
     BRIDGE -->|"uses"| GPROG
     RESP -->|"maps ReturnType to ASP.NET result"| OUT
 
-    classDef gen fill:#ecfdf5,stroke:#047857,stroke-width:5px,color:#111827,font-size:28px;
-    classDef host fill:#fff7ed,stroke:#c2410c,stroke-width:5px,color:#111827,font-size:28px;
+    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
+
+    style GENCODE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+    style HOSTCODE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
+
+    classDef gen fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
+    classDef host fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
 
     class GUSER,GRET,GPROG,GRESULT,GCORE,GENDPOINTS,GAPI,GCATALOG,GVIEWS gen;
     class APP,AUTH,ROUTES,USERCONV,RESP,BRIDGE,OUT host;
