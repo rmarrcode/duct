@@ -39,7 +39,8 @@ hand-written C# host, and one HTTP request.
     "rankSpacing": 56,
     "curve": "stepAfter",
     "padding": 12
-  }
+  },
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph SPEC_LANE["DAFNY SPECIFICATION LAYER"]
@@ -149,15 +150,6 @@ flowchart TB
     DBBRIDGE -->|"uses generated DB"| GDB
     RETURNRESP -->|"ReturnType"| HTTP
 
-    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
-
-    style SPEC_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style ENDPOINT_SPEC_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style IMPL_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style API_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style GEN_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style HOST_LANE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-
     classDef dafny fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
     classDef impl fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
     classDef api fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:34px;
@@ -201,7 +193,8 @@ classes implement the contract. `ImplementationCorrect` is the proof bridge.
     "rankSpacing": 52,
     "curve": "stepAfter",
     "padding": 12
-  }
+  },
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph CONTRACT["DAFNY CONTRACT BOXES"]
@@ -239,12 +232,6 @@ flowchart TB
     GENBOX -->|"calls only"| IMPLBOX
     GENBOX -->|"does not duplicate business logic"| RESULTBOX
 
-    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
-
-    style CONTRACT fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style EFFECTS fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style IMPLEMENTATION fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-
     classDef box fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
     classDef effect fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
     classDef proof fill:#dbeafe,stroke:#111827,stroke-width:8px,color:#111827,font-size:34px;
@@ -281,7 +268,8 @@ This diagram focuses only on generated and hand-written C#.
     "rankSpacing": 52,
     "curve": "stepAfter",
     "padding": 12
-  }
+  },
+  "themeCSS": ".edgePath .path { stroke: #111827 !important; stroke-width: 7px !important; } .arrowheadPath { fill: #111827 !important; stroke: #111827 !important; } .edgeLabel { background-color: #e5e7eb !important; color: #111827 !important; } .node rect { rx: 0 !important; ry: 0 !important; }"
 }}%%
 flowchart TB
     subgraph GENCODE["Generated C# from Dafny"]
@@ -329,11 +317,6 @@ flowchart TB
     RESP -->|"executes database program"| BRIDGE
     BRIDGE -->|"uses"| GPROG
     RESP -->|"maps ReturnType to ASP.NET result"| OUT
-
-    linkStyle default stroke:#111827,stroke-width:7px,color:#111827;
-
-    style GENCODE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
-    style HOSTCODE fill:#e5e7eb,stroke:#111827,stroke-width:6px,color:#111827;
 
     classDef gen fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
     classDef host fill:#dbeafe,stroke:#111827,stroke-width:7px,color:#111827,font-size:32px;
