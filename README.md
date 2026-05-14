@@ -1,19 +1,14 @@
 # Duct Project Architecture
 
-This project defines web API behavior in Dafny, verifies that endpoint
-implementations satisfy their postconditions, translates the Dafny code into C#,
-and hosts the generated logic with ASP.NET Core.
+Duct is a backend framework that enables the development of web funtionality via formal specifications.
+The philosophy behind this project is that specifications are an abstraction layers for LLM generated code.
+I want to leverage the generative capabilities of LLMS as well as the power that comes with abstract formalizations.
 
-The key split is:
-
-- Dafny source code defines specs, implementations, database programs, and API metadata.
-- Generated C# mirrors the Dafny classes and datatypes.
-- Hand-written C# hosts the generated logic as HTTP routes.
+A programmer defines web API behavior in Dafny; an LLM verifies that endpoint
+implementations satisfy the dafny specifications, translates the Dafny code into C# to be run with 
+ASP.NET Core.
 
 ## Diagrams
-
-These diagrams avoid custom Mermaid initialization and CSS so they render
-reliably in GitHub. Every item is a white box with a black border.
 
 ### End-To-End Architecture
 
