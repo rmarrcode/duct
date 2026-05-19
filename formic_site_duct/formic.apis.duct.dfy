@@ -5,13 +5,9 @@ module DuctApis {
     import opened DuctLoginImpl
     import opened DuctSaveUserImpl
     import opened DuctSecureImpl
+    import opened DuctUserInfoImpl
 
     class Views {
-
-        static method EndPointsInterface()
-        {
-        }
-
 
         static method Endpoints() returns (all: AllApiEndpoints)
         {
@@ -34,6 +30,10 @@ module DuctApis {
             var secure := new ApiEndpoint("/secure", secure_page);
             catalog.Add(secure);
             
+            var user_info_page := new UserInfoPage();
+            var secure := new ApiEndpoint("/user_info", user_info_page);
+            catalog.Add(secure);
+
             all := catalog; 
         }
     }

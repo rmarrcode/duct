@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 using System.Collections;
 [assembly: DafnyAssembly.DafnySourceAttribute(@"// dafny 4.9.0.0
-// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/db.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/formic.specs.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/implementations/landing_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/implementations/login_challenge.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/implementations/save_user.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/implementations/secure_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_cs/../formic_site_duct/converted_duct/formic_duct
+// Command-line arguments: translate cs /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/db.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.specs.duct.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/landing_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/login_challenge.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/save_user.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/secure_page.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/implementations/user_info.program.dfy /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/formic.apis.duct.dfy --no-verify --allow-warnings --include-runtime --output /home/ryan-marr/Documents/secret/duct_env/duct/formic_site_duct/converted_duct/formic_duct
 // the_program
 
 
@@ -448,7 +448,7 @@ module DuctSpecs {
     decreases ctx, payload
   {
     payload.Content? &&
-    var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
+    var html: string := payload.body; html != """" && Contains(html, ctx.name) && (ctx.email == """" || Contains(html, ctx.email)) && (ctx.picture == """" || Contains(html, ctx.picture)) && ctx.authenticated == (Contains(html, ""Signed in"") && Contains(html, Link(""Log out"", ""/logout"")) && Contains(html, Link(""User Info"", ""/user_info""))) && !ctx.authenticated == (Contains(html, ""Anonymous"") && Contains(html, Link(""Sign in"", ""/login"")))
   }
 
   predicate LandingPagePost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
@@ -461,7 +461,7 @@ module DuctSpecs {
   predicate LoginPost(ctx: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
     decreases ctx, before, payload, after
   {
-    payload == ReturnType.ChallengeGoogle(""/"") &&
+    payload == ReturnType.ChallengeGoogle(""/save_user"") &&
     after == before
   }
 
@@ -480,7 +480,7 @@ module DuctSpecs {
       payload == Redirect(""/"") &&
       after == FilterEntries(before, PersistedUserKey(ctx.email)) + [row]
     else
-      payload == ChallengeGoogle(""/signin-google"") && after == before
+      payload == ChallengeGoogle(""/save_user"") && after == before
   }
 
   import opened DuctTools
@@ -636,7 +636,7 @@ module DuctLoginImpl {
     function Implementation(u: UserInfo): GeneratedEndpointResult
       decreases u
     {
-      GeneratedEndpointResult(Return, ChallengeGoogle(""/""))
+      GeneratedEndpointResult(Return, ChallengeGoogle(""/save_user""))
     }
   }
 }
@@ -733,10 +733,6 @@ module DuctApis {
 
   import opened DuctSecureImpl
   class Views {
-    static method EndPointsInterface()
-    {
-    }
-
     static method Endpoints() returns (all: AllApiEndpoints)
     {
       var catalog := new AllApiEndpoints();
@@ -9310,7 +9306,7 @@ namespace DuctSpecs {
       var _pat_let_tv4 = ctx;
       var _pat_let_tv5 = ctx;
       var _pat_let_tv6 = ctx;
-      return ((payload).is_Content) && (Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>((payload).dtor_body, _pat_let0_0 => Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>(_pat_let0_0, _0_html => (((((!(_0_html).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (SpecsTools.__default.Contains(_0_html, (_pat_let_tv0).dtor_name))) && ((((_pat_let_tv1).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv2).dtor_email)))) && ((((_pat_let_tv3).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv4).dtor_picture)))) && (((_pat_let_tv5).dtor_authenticated) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"))))))) && ((!((_pat_let_tv6).dtor_authenticated)) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))))));
+      return ((payload).is_Content) && (Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>((payload).dtor_body, _pat_let0_0 => Dafny.Helpers.Let<Dafny.ISequence<Dafny.Rune>, bool>(_pat_let0_0, _0_html => (((((!(_0_html).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) && (SpecsTools.__default.Contains(_0_html, (_pat_let_tv0).dtor_name))) && ((((_pat_let_tv1).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv2).dtor_email)))) && ((((_pat_let_tv3).dtor_picture).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString(""))) || (SpecsTools.__default.Contains(_0_html, (_pat_let_tv4).dtor_picture)))) && (((_pat_let_tv5).dtor_authenticated) == (((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Signed in"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"))))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("User Info"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/user_info"))))))) && ((!((_pat_let_tv6).dtor_authenticated)) == ((SpecsTools.__default.Contains(_0_html, Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Anonymous"))) && (SpecsTools.__default.Contains(_0_html, SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login")))))))));
     }
     public static bool LandingPagePost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
@@ -9318,7 +9314,7 @@ namespace DuctSpecs {
     }
     public static bool LoginPost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
-      return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")))) && ((after).Equals(before));
+      return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")))) && ((after).Equals(before));
     }
     public static bool SecurePost(DuctTools._IUserInfo ctx, Dafny.ISequence<DB._IDbValue> before, DuctTools._IReturnType payload, Dafny.ISequence<DB._IDbValue> after)
     {
@@ -9330,7 +9326,7 @@ namespace DuctSpecs {
         DB._IDbValue _0_row = DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((ctx).dtor_email, (ctx).dtor_name, (ctx).dtor_picture));
         return (object.Equals(payload, DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")))) && ((after).Equals(Dafny.Sequence<DB._IDbValue>.Concat(DB.__default.FilterEntries(before, DB.DbKey.create_PersistedUserKey((ctx).dtor_email)), Dafny.Sequence<DB._IDbValue>.FromElements(_0_row))));
       } else {
-        return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/signin-google")))) && ((after).Equals(before));
+        return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")))) && ((after).Equals(before));
       }
     }
   }
@@ -9455,7 +9451,7 @@ namespace DuctLoginImpl {
     {
     }
     public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u) {
-      return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")));
+      return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")));
     }
   }
 } // end of namespace DuctLoginImpl
@@ -9525,9 +9521,6 @@ namespace DuctApis {
 
   public partial class Views {
     public Views() {
-    }
-    public static void EndPointsInterface()
-    {
     }
     public static DuctTools.AllApiEndpoints Endpoints()
     {

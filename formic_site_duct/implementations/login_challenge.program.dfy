@@ -1,4 +1,4 @@
-module DuctLoginImpl {
+module DuctUserInfoImpl {
 
   import opened DB
   import opened DuctTools
@@ -10,7 +10,6 @@ module DuctLoginImpl {
 
     function Implementation(u: UserInfo): GeneratedEndpointResult
     {
-      GeneratedEndpointResult(Return, ChallengeGoogle("/"))
     }
   }
 }
