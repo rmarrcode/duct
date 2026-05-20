@@ -177,7 +177,8 @@ module DuctSpecs {
       after: seq<DbValue>
     )
     {
-      payload == Content(NatToString(|after|))
+      payload == Content(NatToString(|before|)) &&
+      after == before
     }
   }
 

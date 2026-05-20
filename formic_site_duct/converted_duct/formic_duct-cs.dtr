@@ -16,5 +16,7 @@ legacy-module-names = false
 legacy-module-names = false
 [options_by_module.DuctSecureImpl]
 legacy-module-names = false
+[options_by_module.DuctUserInfoImpl]
+legacy-module-names = false
 [options_by_module.DuctApis]
 legacy-module-names = false

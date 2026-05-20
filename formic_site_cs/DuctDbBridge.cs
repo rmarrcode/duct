@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text.Json;
 using Dafny;
+using DuctTools;
 using Npgsql;
 
 public static class DuctDbBridge
@@ -43,6 +44,26 @@ public static class DuctDbBridge
                 DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, db.operations);
             Dafny.ISequence<DB._IDbChange> changes = DB.__default.ProgramOperations(entries, program);
 
+            db.ApplyOperations(changes);
+            PersistUnsyncedOperations(db);
+        }
+    }
+
+    public static void GenerateAndExecute(
+        DB.Database db,
+        IGeneratorCore generator,
+        _IUserInfo user,
+        out DB._IDbProgram program,
+        out _IReturnType payload)
+    {
+        lock (SyncLock)
+        {
+            Dafny.ISequence<DB._IDbValue> entries =
+                DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, db.operations);
+
+            generator.Generate(user, entries, out program, out payload);
+
+            Dafny.ISequence<DB._IDbChange> changes = DB.__default.ProgramOperations(entries, program);
             db.ApplyOperations(changes);
             PersistUnsyncedOperations(db);
         }

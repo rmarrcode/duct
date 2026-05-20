@@ -12,7 +12,10 @@ module DuctLandingImpl {
 
   function LandingPageAction(ctx: UserInfo): string
   {
-    if ctx.authenticated then Link("Log out", "/logout") else Link("Sign in", "/login")
+    if ctx.authenticated then
+      Link("User Info", "/user_info") + Link("Log out", "/logout")
+    else
+      Link("Sign in", "/login")
   }
 
   function LandingPagePicturePanel(ctx: UserInfo): string
@@ -105,7 +108,7 @@ module DuctLandingImpl {
 
     constructor () {}
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
     {
       GeneratedEndpointResult(Return, Content(LandingPageHtml(u)))
     }

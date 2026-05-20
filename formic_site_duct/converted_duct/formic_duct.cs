@@ -334,24 +334,24 @@ module DuctTools {
   }
 
   trait {:termination false} IGeneratorCore extends IGeneratorSpec {
-    function Implementation(u: UserInfo): GeneratedEndpointResult
-      decreases u
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
 
     ghost predicate ImplementationCorrect(u: UserInfo)
       decreases u
     {
-      ghost var result: GeneratedEndpointResult := Implementation(u);
-      forall before: seq<DbValue> {:trigger ExecuteProgram(before, result.program)} :: 
-        PostCondition(u, before, result.response, ExecuteProgram(before, result.program))
+      forall before: seq<DbValue> {:trigger Implementation(u, before)} :: 
+        PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program))
     }
 
-    method Generate(u: UserInfo) returns (prog: DbProgram, payload: ReturnType)
+    method Generate(u: UserInfo, before: seq<DbValue>)
+        returns (prog: DbProgram, payload: ReturnType)
       requires PreCondition(u)
-      ensures prog == Implementation(u).program
-      ensures payload == Implementation(u).response
-      decreases u
+      ensures prog == Implementation(u, before).program
+      ensures payload == Implementation(u, before).response
+      decreases u, before
     {
-      var result := Implementation(u);
+      var result := Implementation(u, before);
       prog := result.program;
       payload := result.response;
     }
@@ -483,6 +483,41 @@ module DuctSpecs {
       payload == ChallengeGoogle(""/save_user"") && after == before
   }
 
+  function DigitString(d: nat): string
+    requires d < 10
+    decreases d
+  {
+    if d == 0 then
+      ""0""
+    else if d == 1 then
+      ""1""
+    else if d == 2 then
+      ""2""
+    else if d == 3 then
+      ""3""
+    else if d == 4 then
+      ""4""
+    else if d == 5 then
+      ""5""
+    else if d == 6 then
+      ""6""
+    else if d == 7 then
+      ""7""
+    else if d == 8 then
+      ""8""
+    else
+      ""9""
+  }
+
+  function NatToString(n: nat): string
+    decreases n
+  {
+    if n < 10 then
+      DigitString(n)
+    else
+      NatToString(n / 10) + DigitString(n % 10)
+  }
+
   import opened DuctTools
 
   import opened SpecsTools
@@ -544,6 +579,21 @@ module DuctSpecs {
       SecurePost(u, before, payload, after)
     }
   }
+
+  trait {:termination false} UserInfoSpec extends IGeneratorCore {
+    predicate PreCondition(u: UserInfo)
+      decreases u
+    {
+      true
+    }
+
+    ghost predicate PostCondition(u: UserInfo, before: seq<DbValue>, payload: ReturnType, after: seq<DbValue>)
+      decreases u, before, payload, after
+    {
+      payload == Content(NatToString(|before|)) &&
+      after == before
+    }
+  }
 }
 
 module DuctLandingImpl {
@@ -560,7 +610,7 @@ module DuctLandingImpl {
     decreases ctx
   {
     if ctx.authenticated then
-      Link(""Log out"", ""/logout"")
+      Link(""User Info"", ""/user_info"") + Link(""Log out"", ""/logout"")
     else
       Link(""Sign in"", ""/login"")
   }
@@ -613,8 +663,8 @@ module DuctLandingImpl {
     {
     }
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
-      decreases u
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
     {
       GeneratedEndpointResult(Return, Content(LandingPageHtml(u)))
     }
@@ -633,10 +683,27 @@ module DuctLoginImpl {
     {
     }
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
-      decreases u
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
     {
       GeneratedEndpointResult(Return, ChallengeGoogle(""/save_user""))
+    }
+
+    lemma /*{:_induction this}*/ ProveImplementationCorrect(u: UserInfo)
+      requires PreCondition(u)
+      ensures ImplementationCorrect(u)
+      decreases u
+    {
+      assert forall before: seq<DbValue> {:trigger Implementation(u, before)} :: PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program)) by {
+        forall before: seq<DbValue> | true
+          ensures PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program))
+        {
+          assert Implementation(u, before).response == ChallengeGoogle(""/save_user"");
+          assert Implementation(u, before).program == Return;
+          assert ProgramOperations(before, Implementation(u, before).program) == [];
+          assert ExecuteProgram(before, Implementation(u, before).program) == before;
+        }
+      }
     }
   }
 }
@@ -653,13 +720,13 @@ module DuctSaveUserImpl {
     {
     }
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
-      decreases u
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
     {
       if u.authenticated && u.email != """" then
         GeneratedEndpointResult(Insert(DbPersistedUser(PersistedUser(u.email, u.name, u.picture))), Redirect(""/""))
       else
-        GeneratedEndpointResult(Return, ChallengeGoogle(""/signin-google""))
+        GeneratedEndpointResult(Return, ChallengeGoogle(""/save_user""))
     }
 
     lemma /*{:_induction this}*/ ProveImplementationCorrect(u: UserInfo)
@@ -667,23 +734,23 @@ module DuctSaveUserImpl {
       ensures ImplementationCorrect(u)
       decreases u
     {
-      assert forall before: seq<DbValue> {:trigger ExecuteProgram(before, Implementation(u).program)} :: PostCondition(u, before, Implementation(u).response, ExecuteProgram(before, Implementation(u).program)) by {
+      assert forall before: seq<DbValue> {:trigger Implementation(u, before)} :: PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program)) by {
         forall before: seq<DbValue> | true
-          ensures PostCondition(u, before, Implementation(u).response, ExecuteProgram(before, Implementation(u).program))
+          ensures PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program))
         {
           if u.authenticated && u.email != """" {
             ghost var row := DbPersistedUser(PersistedUser(u.email, u.name, u.picture));
-            assert Implementation(u).response == Redirect(""/"");
+            assert Implementation(u, before).response == Redirect(""/"");
             assert KeyOf(row) == PersistedUserKey(u.email);
-            assert Implementation(u).program == Insert(row);
-            assert ProgramOperations(before, Implementation(u).program) == [Put(row)];
-            assert ExecuteProgram(before, Implementation(u).program) == ExecuteOperations(before, [Put(row)]);
-            assert ExecuteProgram(before, Implementation(u).program) == FilterEntries(before, PersistedUserKey(u.email)) + [row];
+            assert Implementation(u, before).program == Insert(row);
+            assert ProgramOperations(before, Implementation(u, before).program) == [Put(row)];
+            assert ExecuteProgram(before, Implementation(u, before).program) == ExecuteOperations(before, [Put(row)]);
+            assert ExecuteProgram(before, Implementation(u, before).program) == FilterEntries(before, PersistedUserKey(u.email)) + [row];
           } else {
-            assert Implementation(u).response == ChallengeGoogle(""/signin-google"");
-            assert Implementation(u).program == Return;
-            assert ProgramOperations(before, Implementation(u).program) == [];
-            assert ExecuteProgram(before, Implementation(u).program) == before;
+            assert Implementation(u, before).response == ChallengeGoogle(""/save_user"");
+            assert Implementation(u, before).program == Return;
+            assert ProgramOperations(before, Implementation(u, before).program) == [];
+            assert ExecuteProgram(before, Implementation(u, before).program) == before;
           }
         }
       }
@@ -713,10 +780,47 @@ module DuctSecureImpl {
     {
     }
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
-      decreases u
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
     {
       GeneratedEndpointResult(Return, if u.authenticated then Content(SecureHtml(u)) else ChallengeGoogle(""/secure""))
+    }
+  }
+}
+
+module DuctUserInfoImpl {
+
+  import opened DB
+
+  import opened DuctTools
+
+  import opened DuctSpecs
+  class UserInfoPage extends UserInfoSpec {
+    constructor ()
+    {
+    }
+
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
+      decreases u, before
+    {
+      GeneratedEndpointResult(Return, Content(NatToString(|before|)))
+    }
+
+    lemma /*{:_induction this}*/ ProveImplementationCorrect(u: UserInfo)
+      requires PreCondition(u)
+      ensures ImplementationCorrect(u)
+      decreases u
+    {
+      assert forall before: seq<DbValue> {:trigger Implementation(u, before)} :: PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program)) by {
+        forall before: seq<DbValue> | true
+          ensures PostCondition(u, before, Implementation(u, before).response, ExecuteProgram(before, Implementation(u, before).program))
+        {
+          assert Implementation(u, before).response == Content(NatToString(|before|));
+          assert Implementation(u, before).program == Return;
+          assert ProgramOperations(before, Implementation(u, before).program) == [];
+          assert ExecuteProgram(before, Implementation(u, before).program) == before;
+        }
+      }
     }
   }
 }
@@ -732,6 +836,8 @@ module DuctApis {
   import opened DuctSaveUserImpl
 
   import opened DuctSecureImpl
+
+  import opened DuctUserInfoImpl
   class Views {
     static method Endpoints() returns (all: AllApiEndpoints)
     {
@@ -748,6 +854,9 @@ module DuctApis {
       var secure_page := new SecurePage();
       var secure := new ApiEndpoint(""/secure"", secure_page);
       catalog.Add(secure);
+      var user_info_page := new UserInfoPage();
+      var user_info := new ApiEndpoint(""/user_info"", user_info_page);
+      catalog.Add(user_info);
       all := catalog;
     }
   }
@@ -9213,16 +9322,16 @@ namespace DuctTools {
   }
 
   public interface IGeneratorCore : DuctTools.IGeneratorSpec {
-    DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u);
-    void Generate(DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload);
+    DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before);
+    void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload);
   }
   public class _Companion_IGeneratorCore {
-    public static void Generate(DuctTools.IGeneratorCore _this, DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    public static void Generate(DuctTools.IGeneratorCore _this, DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
     {
       prog = DB.DbProgram.Default();
       payload = DuctTools.ReturnType.Default();
       DuctTools._IGeneratedEndpointResult _0_result;
-      _0_result = (_this).Implementation(u);
+      _0_result = (_this).Implementation(u, before);
       prog = (_0_result).dtor_program;
       payload = (_0_result).dtor_response;
     }
@@ -9329,6 +9438,41 @@ namespace DuctSpecs {
         return (object.Equals(payload, DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")))) && ((after).Equals(before));
       }
     }
+    public static Dafny.ISequence<Dafny.Rune> DigitString(BigInteger d) {
+      if ((d).Sign == 0) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("0");
+      } else if ((d) == (BigInteger.One)) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("1");
+      } else if ((d) == (new BigInteger(2))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("2");
+      } else if ((d) == (new BigInteger(3))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("3");
+      } else if ((d) == (new BigInteger(4))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("4");
+      } else if ((d) == (new BigInteger(5))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("5");
+      } else if ((d) == (new BigInteger(6))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("6");
+      } else if ((d) == (new BigInteger(7))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("7");
+      } else if ((d) == (new BigInteger(8))) {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("8");
+      } else {
+        return Dafny.Sequence<Dafny.Rune>.UnicodeFromString("9");
+      }
+    }
+    public static Dafny.ISequence<Dafny.Rune> NatToString(BigInteger n) {
+      Dafny.ISequence<Dafny.Rune> _0___accumulator = Dafny.Sequence<Dafny.Rune>.FromElements();
+    TAIL_CALL_START: ;
+      if ((n) < (new BigInteger(10))) {
+        return Dafny.Sequence<Dafny.Rune>.Concat(DuctSpecs.__default.DigitString(n), _0___accumulator);
+      } else {
+        _0___accumulator = Dafny.Sequence<Dafny.Rune>.Concat(DuctSpecs.__default.DigitString(Dafny.Helpers.EuclideanModulus(n, new BigInteger(10))), _0___accumulator);
+        BigInteger _in0 = Dafny.Helpers.EuclideanDivision(n, new BigInteger(10));
+        n = _in0;
+        goto TAIL_CALL_START;
+      }
+    }
   }
 
   public interface LandingPageSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
@@ -9362,6 +9506,14 @@ namespace DuctSpecs {
       return true;
     }
   }
+
+  public interface UserInfoSpec : DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+  }
+  public class _Companion_UserInfoSpec {
+    public static bool PreCondition(DuctSpecs.UserInfoSpec _this, DuctTools._IUserInfo u) {
+      return true;
+    }
+  }
 } // end of namespace DuctSpecs
 namespace DuctLandingImpl {
 
@@ -9375,7 +9527,7 @@ namespace DuctLandingImpl {
     }
     public static Dafny.ISequence<Dafny.Rune> LandingPageAction(DuctTools._IUserInfo ctx) {
       if ((ctx).dtor_authenticated) {
-        return SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout"));
+        return Dafny.Sequence<Dafny.Rune>.Concat(SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("User Info"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/user_info")), SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Log out"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/logout")));
       } else {
         return SpecsTools.__default.Link(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("Sign in"), Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/login"));
       }
@@ -9411,11 +9563,11 @@ namespace DuctLandingImpl {
   public partial class FormicLandingPage : DuctSpecs.LandingPageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public FormicLandingPage() {
     }
-    public void Generate(DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    public void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
     {
       DB._IDbProgram _out0;
       DuctTools._IReturnType _out1;
-      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out0, out _out1);
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, before, out _out0, out _out1);
       prog = _out0;
       payload = _out1;
     }
@@ -9425,7 +9577,8 @@ namespace DuctLandingImpl {
     public void __ctor()
     {
     }
-    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u) {
+    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before)
+    {
       return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_Content(DuctLandingImpl.__default.LandingPageHtml(u)));
     }
   }
@@ -9436,11 +9589,11 @@ namespace DuctLoginImpl {
   public partial class LoginChallengePage : DuctSpecs.LoginChallengePageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public LoginChallengePage() {
     }
-    public void Generate(DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    public void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
     {
       DB._IDbProgram _out2;
       DuctTools._IReturnType _out3;
-      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out2, out _out3);
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, before, out _out2, out _out3);
       prog = _out2;
       payload = _out3;
     }
@@ -9450,7 +9603,8 @@ namespace DuctLoginImpl {
     public void __ctor()
     {
     }
-    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u) {
+    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before)
+    {
       return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")));
     }
   }
@@ -9461,11 +9615,11 @@ namespace DuctSaveUserImpl {
   public partial class SaveUserPage : DuctSpecs.SaveUserPageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public SaveUserPage() {
     }
-    public void Generate(DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    public void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
     {
       DB._IDbProgram _out4;
       DuctTools._IReturnType _out5;
-      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out4, out _out5);
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, before, out _out4, out _out5);
       prog = _out4;
       payload = _out5;
     }
@@ -9475,11 +9629,12 @@ namespace DuctSaveUserImpl {
     public void __ctor()
     {
     }
-    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u) {
+    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before)
+    {
       if (((u).dtor_authenticated) && (!((u).dtor_email).Equals(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("")))) {
         return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Insert(DB.DbValue.create_DbPersistedUser(DB.PersistedUser.create((u).dtor_email, (u).dtor_name, (u).dtor_picture))), DuctTools.ReturnType.create_Redirect(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/")));
       } else {
-        return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/signin-google")));
+        return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/save_user")));
       }
     }
   }
@@ -9497,11 +9652,11 @@ namespace DuctSecureImpl {
   public partial class SecurePage : DuctSpecs.SecurePageSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
     public SecurePage() {
     }
-    public void Generate(DuctTools._IUserInfo u, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    public void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
     {
       DB._IDbProgram _out6;
       DuctTools._IReturnType _out7;
-      DuctTools._Companion_IGeneratorCore.Generate(this, u, out _out6, out _out7);
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, before, out _out6, out _out7);
       prog = _out6;
       payload = _out7;
     }
@@ -9511,11 +9666,38 @@ namespace DuctSecureImpl {
     public void __ctor()
     {
     }
-    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u) {
+    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before)
+    {
       return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), (((u).dtor_authenticated) ? (DuctTools.ReturnType.create_Content(DuctSecureImpl.__default.SecureHtml(u))) : (DuctTools.ReturnType.create_ChallengeGoogle(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure")))));
     }
   }
 } // end of namespace DuctSecureImpl
+namespace DuctUserInfoImpl {
+
+
+  public partial class UserInfoPage : DuctSpecs.UserInfoSpec, DuctTools.IGeneratorCore, DuctTools.IGeneratorSpec {
+    public UserInfoPage() {
+    }
+    public void Generate(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before, out DB._IDbProgram prog, out DuctTools._IReturnType payload)
+    {
+      DB._IDbProgram _out8;
+      DuctTools._IReturnType _out9;
+      DuctTools._Companion_IGeneratorCore.Generate(this, u, before, out _out8, out _out9);
+      prog = _out8;
+      payload = _out9;
+    }
+    public bool PreCondition(DuctTools._IUserInfo u) {
+      return DuctSpecs._Companion_UserInfoSpec.PreCondition(this, u);
+    }
+    public void __ctor()
+    {
+    }
+    public DuctTools._IGeneratedEndpointResult Implementation(DuctTools._IUserInfo u, Dafny.ISequence<DB._IDbValue> before)
+    {
+      return DuctTools.GeneratedEndpointResult.create(DB.DbProgram.create_Return(), DuctTools.ReturnType.create_Content(DuctSpecs.__default.NatToString(new BigInteger((before).Count))));
+    }
+  }
+} // end of namespace DuctUserInfoImpl
 namespace DuctApis {
 
 
@@ -9565,6 +9747,15 @@ namespace DuctApis {
       _nw8.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/secure"), _7_secure__page);
       _8_secure = _nw8;
       (_0_catalog).Add(_8_secure);
+      DuctUserInfoImpl.UserInfoPage _9_user__info__page;
+      DuctUserInfoImpl.UserInfoPage _nw9 = new DuctUserInfoImpl.UserInfoPage();
+      _nw9.__ctor();
+      _9_user__info__page = _nw9;
+      DuctTools.ApiEndpoint _10_user__info;
+      DuctTools.ApiEndpoint _nw10 = new DuctTools.ApiEndpoint();
+      _nw10.__ctor(Dafny.Sequence<Dafny.Rune>.UnicodeFromString("/user_info"), _9_user__info__page);
+      _10_user__info = _nw10;
+      (_0_catalog).Add(_10_user__info);
       all = _0_catalog;
       return all;
     }

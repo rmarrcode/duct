@@ -30,21 +30,24 @@ module DuctTools {
 
   trait {:termination false} IGeneratorCore extends IGeneratorSpec {
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
 
     ghost predicate ImplementationCorrect(u: UserInfo)
     {
-      var result := Implementation(u);
       forall before: seq<DbValue> ::
-        PostCondition(u, before, result.response, ExecuteProgram(before, result.program))
+        PostCondition(
+          u,
+          before,
+          Implementation(u, before).response,
+          ExecuteProgram(before, Implementation(u, before).program))
     }
 
-    method Generate(u: UserInfo) returns (prog: DbProgram, payload: ReturnType)
+    method Generate(u: UserInfo, before: seq<DbValue>) returns (prog: DbProgram, payload: ReturnType)
       requires PreCondition(u)
-      ensures prog == Implementation(u).program
-      ensures payload == Implementation(u).response
+      ensures prog == Implementation(u, before).program
+      ensures payload == Implementation(u, before).response
     {
-      var result := Implementation(u);
+      var result := Implementation(u, before);
       prog := result.program;
       payload := result.response;
     }

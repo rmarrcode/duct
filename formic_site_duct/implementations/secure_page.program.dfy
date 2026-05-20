@@ -20,7 +20,7 @@ module DuctSecureImpl {
 
     constructor () {}
 
-    function Implementation(u: UserInfo): GeneratedEndpointResult
+    function Implementation(u: UserInfo, before: seq<DbValue>): GeneratedEndpointResult
     {
       GeneratedEndpointResult(
         Return,

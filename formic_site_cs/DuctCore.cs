@@ -94,8 +94,7 @@ static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
 
 static IResult ReturnResponse(IGeneratorCore generator, DuctTools._IUserInfo user, DB.Database db)
 {
-    generator.Generate(user, out DB._IDbProgram program, out _IReturnType payload);
-    DuctDbBridge.ExecuteProgram(db, program);
+    DuctDbBridge.GenerateAndExecute(db, generator, user, out DB._IDbProgram program, out _IReturnType payload);
 
     if (payload.is_Content)
     {

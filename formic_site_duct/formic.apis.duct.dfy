@@ -31,8 +31,8 @@ module DuctApis {
             catalog.Add(secure);
             
             var user_info_page := new UserInfoPage();
-            var secure := new ApiEndpoint("/user_info", user_info_page);
-            catalog.Add(secure);
+            var user_info := new ApiEndpoint("/user_info", user_info_page);
+            catalog.Add(user_info);
 
             all := catalog; 
         }

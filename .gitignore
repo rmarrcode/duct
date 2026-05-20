@@ -31,4 +31,4 @@ artifacts/
 .DS_Store
 Thumbs.db
 
-obj/*
+*/obj/*
