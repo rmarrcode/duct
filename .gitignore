@@ -1,6 +1,7 @@
 # Build output
 bin/
 obj/
+*.csproj.lscache
 
 # User configs/secrets
 appsettings.Development.json
@@ -31,6 +32,6 @@ artifacts/
 .DS_Store
 Thumbs.db
 
-#*/obj/*
-
-#*__pycache__*
+# Python cache
+__pycache__/
+*.py[cod]
