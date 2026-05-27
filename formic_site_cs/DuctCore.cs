@@ -2,7 +2,7 @@ using System.Security.Claims;
 using System.Numerics;
 using System.Linq;
 using Dafny;
-using DuctTools;
+using Tools;
 using DuctApis;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -85,14 +85,14 @@ app.MapGet("/logout", async (HttpContext context) =>
 
 app.Run();
 
-static DuctTools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
-    DuctTools.UserInfo.create_UserInfo(
+static Tools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
+    Tools.UserInfo.create_UserInfo(
         ToDafnyString(user?.Identity?.Name ?? "Guest"),
         ToDafnyString(user?.FindFirstValue(ClaimTypes.Email) ?? string.Empty),
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static IResult ReturnResponse(IGeneratorCore generator, DuctTools._IUserInfo user, DB.Database db)
+static IResult ReturnResponse(IGeneratorCore generator, Tools._IUserInfo user, DB.Database db)
 {
     DuctDbBridge.GenerateAndExecute(db, generator, user, out DB._IDbProgram program, out _IReturnType payload);
 

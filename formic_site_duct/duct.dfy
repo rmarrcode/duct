@@ -1,4 +1,4 @@
-module DuctTools {
+module Tools {
 
   import opened DB
 

@@ -1,8 +1,8 @@
-module DuctLandingImpl {
+module LandingImpl {
 
   import opened DB
-  import opened DuctTools
-  import opened DuctSpecs
+  import opened Tools
+  import opened Specs
   import opened SpecsTools
 
   function LandingPageStatus(ctx: UserInfo): string

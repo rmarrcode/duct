@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text.Json;
 using Dafny;
-using DuctTools;
+using Tools;
 using Npgsql;
 
 public static class DuctDbBridge

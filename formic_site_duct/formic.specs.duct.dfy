@@ -1,6 +1,6 @@
-module DuctSpecs {
+module Specs {
 
-  import opened DuctTools
+  import opened Tools
   import opened SpecsTools
   import opened DB
 

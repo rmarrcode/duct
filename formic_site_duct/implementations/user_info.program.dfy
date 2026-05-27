@@ -1,8 +1,8 @@
-module DuctUserInfoImpl {
+module UserInfoImpl {
 
   import opened DB
-  import opened DuctTools
-  import opened DuctSpecs
+  import opened Tools
+  import opened Specs
 
   class UserInfoPage extends UserInfoSpec {
 

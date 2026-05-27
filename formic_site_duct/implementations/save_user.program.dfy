@@ -1,8 +1,8 @@
-module DuctSaveUserImpl {
+module SaveUserImpl {
 
   import opened DB
-  import opened DuctTools
-  import opened DuctSpecs
+  import opened Tools
+  import opened Specs
 
   class SaveUserPage extends SaveUserPageSpec {
 

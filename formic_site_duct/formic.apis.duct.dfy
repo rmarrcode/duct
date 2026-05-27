@@ -1,11 +1,11 @@
 module DuctApis {
 
-    import opened DuctTools
-    import opened DuctLandingImpl
-    import opened DuctLoginImpl
-    import opened DuctSaveUserImpl
-    import opened DuctSecureImpl
-    import opened DuctUserInfoImpl
+    import opened Tools
+    import opened LandingImpl
+    import opened LoginImpl
+    import opened SaveUserImpl
+    import opened SecureImpl
+    import opened UserInfoImpl
 
     class Views {
 
