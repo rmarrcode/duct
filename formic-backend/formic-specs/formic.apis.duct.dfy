@@ -34,6 +34,10 @@ module DuctApis {
             var user_info := new ApiEndpoint("/user_info", user_info_page);
             catalog.Add(user_info);
 
+            //var training_instructions_page := new TrainingInstructions();
+            //var training_instructions := new ApiEndpoint("/training_instructions", training_instructions_page);
+            //catalog.Add(training_instructions);
+
             all := catalog; 
         }
     }

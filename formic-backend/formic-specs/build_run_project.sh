@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT_DIR="$SCRIPT_DIR/converted_duct"
+PROJECT_DIR="$SCRIPT_DIR/../formic-artifacts"
+OUT_DIR="$PROJECT_DIR/converted-duct"
 SRC_DB="$SCRIPT_DIR/db.dfy"
 SRC_DUCT="$SCRIPT_DIR/duct.dfy"
 SRC_SPECS="$SCRIPT_DIR/formic.specs.duct.dfy"
@@ -64,7 +65,7 @@ echo "Done. Generated files:"
 ls -1 "$OUT_DIR"
 
 echo "Building and running ASP.NET app..."
-pushd "$SCRIPT_DIR/../formic_site_cs" >/dev/null
+pushd "$PROJECT_DIR" >/dev/null
 NUGET_PACKAGES="${NUGET_PACKAGES:-/tmp/nuget}" dotnet build
 ASPNETCORE_URLS="http://${host}:${port_to_use}"
 echo "Starting web app on ${ASPNETCORE_URLS} (Ctrl+C to stop)..."

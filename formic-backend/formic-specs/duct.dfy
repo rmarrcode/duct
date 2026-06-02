@@ -2,6 +2,7 @@ module Tools {
 
   import opened DB
 
+  // User info that bridges to c#
   datatype UserInfo = UserInfo(
     name: string,
     email: string,

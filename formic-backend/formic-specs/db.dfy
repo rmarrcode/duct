@@ -6,10 +6,11 @@ module DB {
     MissingTimestamp
   | PresentTimestamp(value: DbTimestamp)
 
+  // Every project must use their own PersistedUser
   datatype PersistedUser = PersistedUser(
     email: string,
     name: string,
-    picture: string
+    picture: string 
   )
 
   datatype UserCreds = FormicUser(
