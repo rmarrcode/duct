@@ -1,28 +1,25 @@
 using System.Collections;
-using System.Runtime.CompilerServices;
+using System.Data;
 using System.Numerics;
-using System.Net.Sockets;
 using System.Reflection;
 using System.Text.Json;
+using System.Linq;
 using Dafny;
 using Tools;
 using Npgsql;
 
 public static class DuctDbBridge
 {
+    private const long PersistenceLockKey = 1146448724; // "DUCT"
+
     private static string? s_connectionString;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false
     };
-    private static readonly object SyncLock = new();
-    private static readonly ConditionalWeakTable<DB.Database, SyncState> SyncStates = new();
 
-    private sealed class SyncState
-    {
-        public int SyncedCount { get; set; }
-    }
+    private static readonly object SyncLock = new();
 
     public static void Configure(string connectionString)
     {
@@ -33,24 +30,39 @@ public static class DuctDbBridge
 
     public static void ExecuteProgram(DB.Database? db, DB._IDbProgram? program)
     {
-        if (db is null || program is null)
+        if (program is null)
         {
             return;
         }
 
         lock (SyncLock)
         {
-            Dafny.ISequence<DB._IDbValue> entries =
-                DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, db.operations);
-            Dafny.ISequence<DB._IDbChange> changes = DB.__default.ProgramOperations(entries, program);
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
-            db.ApplyOperations(changes);
-            PersistUnsyncedOperations(db);
+            AcquirePersistenceLock(connection, transaction);
+            EnsureSchema(connection, transaction);
+
+            List<DB._IDbChange> persistedChanges = LoadPersistedChanges(connection, transaction);
+            Dafny.ISequence<DB._IDbValue> before = ExecutePersistedChanges(persistedChanges);
+            Dafny.ISequence<DB._IDbChange> newChanges = DB.__default.ProgramOperations(before, program);
+
+            PersistChanges(connection, transaction, newChanges);
+            transaction.Commit();
+
+            UpdateDatabaseSnapshot(db, persistedChanges, newChanges);
         }
     }
 
     public static void GenerateAndExecute(
-        DB.Database db,
+        IGeneratorCore generator,
+        _IUserInfo user,
+        out DB._IDbProgram program,
+        out _IReturnType payload) =>
+        GenerateAndExecute(null, generator, user, out program, out payload);
+
+    public static void GenerateAndExecute(
+        DB.Database? db,
         IGeneratorCore generator,
         _IUserInfo user,
         out DB._IDbProgram program,
@@ -58,14 +70,22 @@ public static class DuctDbBridge
     {
         lock (SyncLock)
         {
-            Dafny.ISequence<DB._IDbValue> entries =
-                DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, db.operations);
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
-            generator.Generate(user, entries, out program, out payload);
+            AcquirePersistenceLock(connection, transaction);
+            EnsureSchema(connection, transaction);
 
-            Dafny.ISequence<DB._IDbChange> changes = DB.__default.ProgramOperations(entries, program);
-            db.ApplyOperations(changes);
-            PersistUnsyncedOperations(db);
+            List<DB._IDbChange> persistedChanges = LoadPersistedChanges(connection, transaction);
+            Dafny.ISequence<DB._IDbValue> before = ExecutePersistedChanges(persistedChanges);
+
+            generator.Generate(user, before, out program, out payload);
+
+            Dafny.ISequence<DB._IDbChange> newChanges = DB.__default.ProgramOperations(before, program);
+            PersistChanges(connection, transaction, newChanges);
+            transaction.Commit();
+
+            UpdateDatabaseSnapshot(db, persistedChanges, newChanges);
         }
     }
 
@@ -78,45 +98,121 @@ public static class DuctDbBridge
 
         lock (SyncLock)
         {
-            PersistUnsyncedOperations(db);
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+
+            AcquirePersistenceLock(connection, transaction);
+            EnsureSchema(connection, transaction);
+
+            int persistedCount = CountPersistedChanges(connection, transaction);
+            int totalOperations = db.operations.Count;
+
+            if (persistedCount > totalOperations)
+            {
+                throw new InvalidOperationException(
+                    $"Persistent store contains {persistedCount} change(s), but the in-memory database only has {totalOperations}.");
+            }
+
+            for (int i = persistedCount; i < totalOperations; i++)
+            {
+                PersistChange(connection, transaction, db.operations.Select(new BigInteger(i)));
+            }
+
+            transaction.Commit();
         }
     }
 
-    private static void PersistUnsyncedOperations(DB.Database db)
+    private static NpgsqlConnection OpenConnection()
     {
-        SyncState state = SyncStates.GetOrCreateValue(db);
-        int totalOperations = db.operations.Count;
-        int syncedCount = state.SyncedCount;
-
-        for (int i = state.SyncedCount; i < totalOperations; i++)
-        {
-            try
-            {
-                Persist(db, db.operations.Select(new BigInteger(i)));
-                syncedCount++;
-            }
-            catch (NpgsqlException ex) when (ex.InnerException is SocketException)
-            {
-                Console.Error.WriteLine(
-                    $"Duct DB persistence unavailable; {totalOperations - i} operation(s) remain queued. {ex.Message}");
-                break;
-            }
-        }
-
-        state.SyncedCount = syncedCount;
-    }
-
-    public static void Persist(object db, object value)
-    {
-        EnsureSchema();
-
-        string rootKind = value.GetType().FullName ?? value.GetType().Name;
-        string payloadJson = JsonSerializer.Serialize(ToPlainObject(value), JsonOptions);
-
-        using var connection = new NpgsqlConnection(GetConnectionString());
+        var connection = new NpgsqlConnection(GetConnectionString());
         connection.Open();
+        return connection;
+    }
+
+    private static void AcquirePersistenceLock(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "select pg_advisory_xact_lock(@key);";
+        command.Parameters.AddWithValue("key", PersistenceLockKey);
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureSchema(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = @"
+create table if not exists dafny_objects (
+  id bigint generated by default as identity primary key,
+  root_kind text not null,
+  payload_json text not null,
+  created_at timestamptz not null default current_timestamp
+);
+
+create index if not exists idx_dafny_objects_root_kind_id
+  on dafny_objects(root_kind, id);";
+        command.ExecuteNonQuery();
+    }
+
+    private static int CountPersistedChanges(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = @"
+select count(*)
+from dafny_objects
+where root_kind like 'DB.DbChange%';";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private static List<DB._IDbChange> LoadPersistedChanges(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        var changes = new List<DB._IDbChange>();
 
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = @"
+select root_kind, payload_json
+from dafny_objects
+where root_kind like 'DB.DbChange%'
+order by id;";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            string rootKind = reader.GetString(0);
+            string payloadJson = reader.GetString(1);
+            changes.Add(DeserializeChange(rootKind, payloadJson));
+        }
+
+        return changes;
+    }
+
+    private static Dafny.ISequence<DB._IDbValue> ExecutePersistedChanges(IReadOnlyList<DB._IDbChange> persistedChanges) =>
+        DB.__default.ExecuteOperations(Dafny.Sequence<DB._IDbValue>.Empty, ToSequence(persistedChanges));
+
+    private static void PersistChanges(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Dafny.ISequence<DB._IDbChange> changes)
+    {
+        for (int i = 0; i < changes.Count; i++)
+        {
+            PersistChange(connection, transaction, changes.Select(new BigInteger(i)));
+        }
+    }
+
+    private static void PersistChange(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        DB._IDbChange change)
+    {
+        string rootKind = change.GetType().FullName ?? change.GetType().Name;
+        string payloadJson = JsonSerializer.Serialize(ToPlainObject(change), JsonOptions);
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = @"
 insert into dafny_objects(root_kind, payload_json)
 values (@root_kind, @payload_json);";
@@ -124,6 +220,207 @@ values (@root_kind, @payload_json);";
         command.Parameters.AddWithValue("payload_json", payloadJson);
         command.ExecuteNonQuery();
     }
+
+    private static void UpdateDatabaseSnapshot(
+        DB.Database? db,
+        IReadOnlyList<DB._IDbChange> persistedChanges,
+        Dafny.ISequence<DB._IDbChange> newChanges)
+    {
+        if (db is null)
+        {
+            return;
+        }
+
+        db.operations = Dafny.Sequence<DB._IDbChange>.Concat(ToSequence(persistedChanges), newChanges);
+    }
+
+    private static Dafny.ISequence<T> ToSequence<T>(IReadOnlyList<T> items) =>
+        items.Count == 0 ? Dafny.Sequence<T>.Empty : Dafny.Sequence<T>.FromArray(items.ToArray());
+
+    private static DB._IDbChange DeserializeChange(string rootKind, string payloadJson)
+    {
+        using JsonDocument document = JsonDocument.Parse(payloadJson);
+        JsonElement element = document.RootElement;
+        string kind = GetDiscriminant(element, rootKind);
+
+        return kind switch
+        {
+            "Put" => DB.DbChange.create_Put(DeserializeDbValue(GetRequiredProperty(element, "row"))),
+            "Edit" => DB.DbChange.create_Edit(
+                DeserializeDbKey(GetRequiredProperty(element, "key")),
+                DeserializeDbValue(GetRequiredProperty(element, "newValue"))),
+            "Delete" => DB.DbChange.create_Delete(DeserializeDbKey(GetRequiredProperty(element, "key"))),
+            _ => throw new InvalidOperationException($"Unsupported persisted DbChange kind '{kind}'.")
+        };
+    }
+
+    private static DB._IDbValue DeserializeDbValue(JsonElement element)
+    {
+        string kind = GetDiscriminant(element);
+
+        return kind switch
+        {
+            "DbPersistedUser" => DB.DbValue.create_DbPersistedUser(
+                DeserializePersistedUser(GetRequiredProperty(element, "persistedUser"))),
+            "DbFormicUser" => DB.DbValue.create_DbFormicUser(
+                DeserializeUserCreds(GetRequiredProperty(element, "formicUser"))),
+            "DbLaunchToken" => DB.DbValue.create_DbLaunchToken(
+                DeserializeLaunchToken(GetRequiredProperty(element, "launchToken"))),
+            "DbSession" => DB.DbValue.create_DbSession(
+                DeserializeSession(GetRequiredProperty(element, "session"))),
+            _ => throw new InvalidOperationException($"Unsupported persisted DbValue kind '{kind}'.")
+        };
+    }
+
+    private static DB._IDbKey DeserializeDbKey(JsonElement element)
+    {
+        string kind = GetDiscriminant(element);
+
+        return kind switch
+        {
+            "PersistedUserKey" => DB.DbKey.create_PersistedUserKey(
+                ToDafnyString(ReadString(GetRequiredProperty(element, "email")))),
+            "FormicUserKey" => DB.DbKey.create_FormicUserKey(
+                ReadBigInteger(GetRequiredProperty(element, "id"))),
+            "LaunchTokenKey" => DB.DbKey.create_LaunchTokenKey(
+                ReadBigInteger(GetRequiredProperty(element, "id"))),
+            "SessionKey" => DB.DbKey.create_SessionKey(
+                ReadBigInteger(GetRequiredProperty(element, "id"))),
+            _ => throw new InvalidOperationException($"Unsupported persisted DbKey kind '{kind}'.")
+        };
+    }
+
+    private static DB._IPersistedUser DeserializePersistedUser(JsonElement element) =>
+        DB.PersistedUser.create(
+            ToDafnyString(ReadString(GetRequiredProperty(element, "email"))),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "name"))),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "picture"))));
+
+    private static DB._IUserCreds DeserializeUserCreds(JsonElement element) =>
+        DB.UserCreds.create(
+            ReadBigInteger(GetRequiredProperty(element, "id")),
+            DeserializePersistedUser(GetRequiredProperty(element, "user")),
+            DeserializeLaunchToken(GetRequiredProperty(element, "launch_token")));
+
+    private static DB._ILaunchToken DeserializeLaunchToken(JsonElement element) =>
+        DB.LaunchToken.create(
+            ReadBigInteger(GetRequiredProperty(element, "id")),
+            ReadBigInteger(GetRequiredProperty(element, "user_id")),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "token_hash"))),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "expires_at"))),
+            DeserializeOptionalTimestamp(GetRequiredProperty(element, "used_at")),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "created_at"))));
+
+    private static DB._ISession DeserializeSession(JsonElement element) =>
+        DB.Session.create(
+            ReadBigInteger(GetRequiredProperty(element, "id")),
+            ReadBigInteger(GetRequiredProperty(element, "user_id")),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "token_hash"))),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "expires_at"))),
+            DeserializeOptionalTimestamp(GetRequiredProperty(element, "revoked_at")),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "created_at"))),
+            ToDafnyString(ReadString(GetRequiredProperty(element, "last_seen_at"))));
+
+    private static DB._IOptionalDbTimestamp DeserializeOptionalTimestamp(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Null)
+        {
+            return DB.OptionalDbTimestamp.create_MissingTimestamp();
+        }
+
+        string kind = GetDiscriminant(element);
+
+        return kind switch
+        {
+            "MissingTimestamp" => DB.OptionalDbTimestamp.create_MissingTimestamp(),
+            "PresentTimestamp" => DB.OptionalDbTimestamp.create_PresentTimestamp(
+                ToDafnyString(ReadString(GetRequiredProperty(element, "value")))),
+            _ => throw new InvalidOperationException(
+                $"Unsupported persisted OptionalDbTimestamp kind '{kind}'.")
+        };
+    }
+
+    private static JsonElement GetRequiredProperty(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out JsonElement property))
+        {
+            throw new InvalidOperationException($"Persisted payload is missing property '{propertyName}'.");
+        }
+
+        return property;
+    }
+
+    private static string GetDiscriminant(JsonElement element, string? fallbackType = null)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            return CaseFromTypeName(element.GetString() ?? string.Empty);
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("__case", out JsonElement caseElement) &&
+                caseElement.ValueKind == JsonValueKind.String)
+            {
+                return caseElement.GetString() ?? string.Empty;
+            }
+
+            if (element.TryGetProperty("__type", out JsonElement typeElement) &&
+                typeElement.ValueKind == JsonValueKind.String)
+            {
+                return CaseFromTypeName(typeElement.GetString() ?? string.Empty);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(fallbackType))
+        {
+            return CaseFromTypeName(fallbackType);
+        }
+
+        throw new InvalidOperationException("Persisted payload is missing a type discriminator.");
+    }
+
+    private static string CaseFromTypeName(string typeName)
+    {
+        int lastUnderscore = typeName.LastIndexOf('_');
+        if (lastUnderscore >= 0 && lastUnderscore < typeName.Length - 1)
+        {
+            return typeName[(lastUnderscore + 1)..];
+        }
+
+        int lastDot = typeName.LastIndexOf('.');
+        if (lastDot >= 0 && lastDot < typeName.Length - 1)
+        {
+            return typeName[(lastDot + 1)..];
+        }
+
+        return typeName;
+    }
+
+    private static string ReadString(JsonElement element) =>
+        element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Null => string.Empty,
+            _ => throw new InvalidOperationException(
+                $"Expected a JSON string but found {element.ValueKind}.")
+        };
+
+    private static BigInteger ReadBigInteger(JsonElement element)
+    {
+        string raw = element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? "0",
+            JsonValueKind.Number => element.GetRawText(),
+            _ => throw new InvalidOperationException(
+                $"Expected a JSON number or string but found {element.ValueKind}.")
+        };
+
+        return BigInteger.Parse(raw);
+    }
+
+    private static Dafny.ISequence<Dafny.Rune> ToDafnyString(string text) =>
+        Dafny.Sequence<Dafny.Rune>.UnicodeFromString(text ?? string.Empty);
 
     private static object? ToPlainObject(object? value)
     {
@@ -160,6 +457,7 @@ values (@root_kind, @payload_json);";
                 string key = entry.Key?.ToString() ?? "null";
                 mapped[key] = ToPlainObject(entry.Value);
             }
+
             return mapped;
         }
 
@@ -170,6 +468,7 @@ values (@root_kind, @payload_json);";
             {
                 items.Add(ToPlainObject(item));
             }
+
             return items;
         }
 
@@ -219,22 +518,6 @@ values (@root_kind, @payload_json);";
     {
         string name = propertyName["dtor_".Length..];
         return name.Replace("__", "_");
-    }
-
-    private static void EnsureSchema()
-    {
-        using var connection = new NpgsqlConnection(GetConnectionString());
-        connection.Open();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = @"
-create table if not exists dafny_objects (
-  id bigint generated by default as identity primary key,
-  root_kind text not null,
-  payload_json text not null,
-  created_at timestamptz not null default current_timestamp
-);";
-        command.ExecuteNonQuery();
     }
 
     private static string GetConnectionString() =>

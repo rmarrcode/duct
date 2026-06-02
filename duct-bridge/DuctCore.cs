@@ -62,7 +62,6 @@ app.UseAuthorization();
 
 // Endpoints supplied by Dafny. The host only attaches handlers.
 AllApiEndpoints catalog = Views.Endpoints();
-DB.Database appDb = new DB.Database();
 
 BigInteger endpointCount = catalog.Count();
 for (int i = 0; i < endpointCount; i++)
@@ -72,11 +71,10 @@ for (int i = 0; i < endpointCount; i++)
     app.MapGet(path, (HttpContext context) =>
     {
         _IUserInfo userInfo = ToDafnyUserInfo(context.User);
-        return ReturnResponse(ep.generator, userInfo, appDb);
+        return ReturnResponse(ep.generator, userInfo);
     });
 }
 
-// TODO: need to decide what 'base truth' is
 app.MapGet("/logout", async (HttpContext context) =>
 {
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -92,9 +90,9 @@ static Tools._IUserInfo ToDafnyUserInfo(ClaimsPrincipal user) =>
         ToDafnyString(user?.FindFirst(PictureClaim)?.Value ?? string.Empty),
         user?.Identity?.IsAuthenticated ?? false);
 
-static IResult ReturnResponse(IGeneratorCore generator, Tools._IUserInfo user, DB.Database db)
+static IResult ReturnResponse(IGeneratorCore generator, Tools._IUserInfo user)
 {
-    DuctDbBridge.GenerateAndExecute(db, generator, user, out DB._IDbProgram program, out _IReturnType payload);
+    DuctDbBridge.GenerateAndExecute(generator, user, out DB._IDbProgram program, out _IReturnType payload);
 
     if (payload.is_Content)
     {
