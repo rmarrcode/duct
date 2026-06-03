@@ -2,7 +2,7 @@ module SaveUserImpl {
 
   import opened DB
   import opened Tools
-  import opened Specs
+  import opened SaveUserSpecs
 
   class SaveUserPage extends SaveUserPageSpec {
 

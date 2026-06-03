@@ -2,7 +2,7 @@ module LoginImpl {
 
   import opened DB
   import opened Tools
-  import opened Specs
+  import opened LoginChallengeSpecs
 
   class LoginChallengePage extends LoginChallengePageSpec {
 

@@ -2,7 +2,7 @@ module SecureImpl {
 
   import opened DB
   import opened Tools
-  import opened Specs
+  import opened SecurePageSpecs
   import opened SpecsTools
 
   function SecureHtml(ctx: UserInfo): string

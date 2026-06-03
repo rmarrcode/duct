@@ -2,12 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$SCRIPT_DIR/../formic-artifacts"
+PROJECT_DIR="$SCRIPT_DIR/../artifacts"
 OUT_DIR="$PROJECT_DIR/converted-duct"
 SRC_DB="$SCRIPT_DIR/db.dfy"
-SRC_DUCT="$SCRIPT_DIR/duct.dfy"
-SRC_SPECS="$SCRIPT_DIR/formic.specs.duct.dfy"
-SRC_APIS="$SCRIPT_DIR/formic.apis.duct.dfy"
+SRC_DUCT="$SCRIPT_DIR/../../duct-bridge/duct.dfy"
+SRC_APIS="$SCRIPT_DIR/apis_duct.dfy"
+mapfile -t SPECS < <(find "$SCRIPT_DIR/specs" -maxdepth 1 -name '*.spec.dfy' | sort)
 mapfile -t IMPLEMENTATIONS < <(find "$SCRIPT_DIR/implementations" -maxdepth 1 -name '*.program.dfy' | sort)
 start_port="${PORT:-5000}"
 host="${HOST:-localhost}"
@@ -55,7 +55,7 @@ fi
 mkdir -p "$OUT_DIR"
 
 echo "Generating C# from Dafny sources into $OUT_DIR ..."
-"${DAFNY:-dafny}" translate cs "$SRC_DB" "$SRC_DUCT" "$SRC_SPECS" "${IMPLEMENTATIONS[@]}" "$SRC_APIS" \
+"${DAFNY:-dafny}" translate cs "$SRC_DB" "$SRC_DUCT" "${SPECS[@]}" "${IMPLEMENTATIONS[@]}" "$SRC_APIS" \
   --no-verify \
   --allow-warnings \
   --include-runtime \

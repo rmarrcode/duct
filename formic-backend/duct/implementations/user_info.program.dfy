@@ -2,7 +2,7 @@ module UserInfoImpl {
 
   import opened DB
   import opened Tools
-  import opened Specs
+  import opened UserInfoSpecs
 
   class UserInfoPage extends UserInfoSpec {
 
